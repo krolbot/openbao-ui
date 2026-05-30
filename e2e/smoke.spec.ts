@@ -48,3 +48,22 @@ test("access section: policies, capabilities, tokens", async ({ page }) => {
   await expect(page.getByText("active token")).toBeVisible();
 });
 
+test("foundation: command palette and dark mode", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  // ⌘K / Ctrl+K opens the command palette and can navigate
+  await page.keyboard.press("Control+k");
+  const input = page.getByPlaceholder("Jump to…");
+  await expect(input).toBeVisible();
+  await input.fill("secrets");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/ui\/secrets/);
+
+  // dark mode toggles the root .dark class
+  await page.getByRole("button", { name: "Switch to dark" }).click();
+  await expect(page.locator("html")).toHaveClass(/dark/);
+});
+

@@ -5,7 +5,6 @@ import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import { BaoError } from "@/lib/bao-client";
 import {
   LeaseDetail,
   useLeaseList,

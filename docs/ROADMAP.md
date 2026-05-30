@@ -172,7 +172,7 @@ Each domain lists **coverage** (primary `/v1/` paths), the **UX** approach, and
 | Phase | Theme | Domains | Notable deliverables |
 |---|---|---|---|
 | **0** ✅ | Infra + login + status | — | Next.js BFF, single image, token/userpass login, Overview |
-| **1** ◑ | Foundation depth | A | Namespace switcher ✅, authenticated BFF proxy ✅; remaining: more login methods + OIDC, capability-aware nav, ⌘K, dark mode |
+| **1** ✅ | Foundation depth | A | Namespace switcher, BFF proxy, login methods (token/userpass/LDAP/AppRole/OIDC), capability-aware nav, ⌘K palette, dark mode, session/TTL bar + renew |
 | **2** ✅ | **KV hero** | B | KV v2 browse/CRUD, versions + rollback, masked values, soft-delete/destroy, create dialog, cubbyhole-ready |
 | **3** ✅ | Authz core | F, G | ACL HCL editor, capabilities tester, token create/list/revoke, lease browser |
 | **4** | Access mgmt | D, E | Auth-method enable/config wizards, identity entities/groups, MFA |

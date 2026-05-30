@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as React from "react";
 
+import { ThemeProvider } from "@/components/theme";
 import { NamespaceProvider } from "@/lib/namespace";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -21,7 +22,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={client}>
-      <NamespaceProvider>{children}</NamespaceProvider>
+      <ThemeProvider>
+        <NamespaceProvider>{children}</NamespaceProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

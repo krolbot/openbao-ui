@@ -5,7 +5,9 @@ import { setToken } from "@/lib/session";
 
 type LoginBody =
   | { method: "token"; token: string }
-  | { method: "userpass"; username: string; password: string };
+  | { method: "userpass"; username: string; password: string }
+  | { method: "ldap"; mount?: string; username: string; password: string }
+  | { method: "approle"; mount?: string; roleId: string; secretId: string };
 
 /**
  * POST /ui/api/auth/login
@@ -35,7 +37,7 @@ export async function POST(req: Request) {
       });
     }
 
-    if (body.method === "userpass") {
+    if (body.method === "userpass" || body.method === "ldap") {
       const { username, password } = body;
       if (!username || !password) {
         return NextResponse.json(
@@ -43,10 +45,33 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
-      const res = await openbao.userpassLogin(username, password);
+      const res =
+        body.method === "ldap"
+          ? await openbao.ldapLogin(body.mount || "ldap", username, password)
+          : await openbao.userpassLogin(username, password);
       await setToken(res.auth.client_token, res.auth.lease_duration);
       return NextResponse.json({
         displayName: username,
+        policies: res.auth.policies,
+      });
+    }
+
+    if (body.method === "approle") {
+      const { roleId, secretId } = body;
+      if (!roleId || !secretId) {
+        return NextResponse.json(
+          { error: "Role ID and Secret ID are required" },
+          { status: 400 },
+        );
+      }
+      const res = await openbao.approleLogin(
+        body.mount || "approle",
+        roleId,
+        secretId,
+      );
+      await setToken(res.auth.client_token, res.auth.lease_duration);
+      return NextResponse.json({
+        displayName: "approle",
         policies: res.auth.policies,
       });
     }

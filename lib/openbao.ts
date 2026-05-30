@@ -104,6 +104,47 @@ export const openbao = {
       body: { password },
     }),
 
+  /** LDAP login. */
+  ldapLogin: (mount: string, username: string, password: string) =>
+    request<AuthResponse>(
+      `auth/${mount}/login/${encodeURIComponent(username)}`,
+      { method: "POST", body: { password } },
+    ),
+
+  /** AppRole login (role_id + secret_id). */
+  approleLogin: (mount: string, roleId: string, secretId: string) =>
+    request<AuthResponse>(`auth/${mount}/login`, {
+      method: "POST",
+      body: { role_id: roleId, secret_id: secretId },
+    }),
+
+  /** OIDC: get the provider authorization URL to redirect the user to. */
+  oidcAuthURL: (
+    mount: string,
+    role: string | undefined,
+    redirectUri: string,
+    clientNonce: string,
+  ) =>
+    request<{ data: { auth_url: string } }>(`auth/${mount}/oidc/auth_url`, {
+      method: "POST",
+      body: { role, redirect_uri: redirectUri, client_nonce: clientNonce },
+    }),
+
+  /** OIDC: exchange the callback code/state for a client token. */
+  oidcCallback: (
+    mount: string,
+    state: string,
+    code: string,
+    clientNonce: string,
+  ) =>
+    request<AuthResponse>(
+      `auth/${mount}/oidc/callback?state=${encodeURIComponent(state)}&code=${encodeURIComponent(code)}&client_nonce=${encodeURIComponent(clientNonce)}`,
+    ),
+
+  /** Renew the current token; returns the new lease duration. */
+  renewSelf: (token: string) =>
+    request<AuthResponse>("auth/token/renew-self", { method: "POST", token }),
+
   /** Unauthenticated: current seal status of the instance. */
   sealStatus: () => request<SealStatus>("sys/seal-status"),
 

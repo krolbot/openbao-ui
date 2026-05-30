@@ -3,14 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { useCan } from "@/lib/acl";
 import { cn } from "@/lib/utils";
-
-const TABS = [
-  { href: "/access", label: "Policies" },
-  { href: "/access/capabilities", label: "Capabilities" },
-  { href: "/access/tokens", label: "Tokens" },
-  { href: "/access/leases", label: "Leases" },
-];
 
 export default function AccessLayout({
   children,
@@ -20,6 +14,15 @@ export default function AccessLayout({
   const pathname = usePathname();
   // basePath (/ui) is stripped here so comparisons work regardless of version
   const rel = pathname.replace(/^\/ui/, "") || "/";
+  const can = useCan();
+
+  // Capabilities always works on your own token; the rest are gated.
+  const TABS = [
+    { href: "/access", label: "Policies", show: can("sys/policies/acl") },
+    { href: "/access/capabilities", label: "Capabilities", show: true },
+    { href: "/access/tokens", label: "Tokens", show: can("auth/token/accessors") },
+    { href: "/access/leases", label: "Leases", show: can("sys/leases/lookup") },
+  ].filter((t) => t.show);
 
   return (
     <div className="flex h-full flex-col">
