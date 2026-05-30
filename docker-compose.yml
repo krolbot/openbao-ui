@@ -5,6 +5,8 @@ services:
     build:
       context: .
     image: openbao-ui:latest
+    # PID 1 init so the two child processes (OpenBao + Next.js) are reaped cleanly.
+    init: true
     ports:
       - "3000:3000"
     environment:

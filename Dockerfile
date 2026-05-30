@@ -32,8 +32,9 @@ ENV OPENBAO_ADDR=http://127.0.0.1:8200
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# tini for clean signal handling / zombie reaping (we run two processes).
-RUN apk add --no-cache tini ca-certificates wget
+# No extra OS packages: the readiness probe uses Node's built-in fetch and
+# signal handling is delegated to Docker's init (run with `--init` / compose
+# `init: true`). Keeps the image lean and free of build-time network deps.
 
 # Pull the `bao` binary from the official OpenBao image — no separate container.
 COPY --from=quay.io/openbao/openbao:latest /bin/bao /usr/local/bin/bao
@@ -58,4 +59,6 @@ ENV BAO_DEV_ROOT_TOKEN_ID=root
 EXPOSE 3000
 USER bao
 
-ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/entrypoint.sh"]
+# Run with `docker run --init` (or compose `init: true`) so PID 1 reaps the
+# two child processes (OpenBao + Next.js) cleanly.
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

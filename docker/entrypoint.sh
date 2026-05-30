@@ -20,7 +20,8 @@ start_openbao() {
 wait_for_openbao() {
   echo "[entrypoint] waiting for OpenBao at ${OPENBAO_ADDR} ..."
   i=0
-  until wget -q -O /dev/null "${OPENBAO_ADDR}/v1/sys/seal-status" 2>/dev/null; do
+  # Use Node's built-in fetch for the readiness probe (no wget/curl needed).
+  until node -e "fetch('${OPENBAO_ADDR}/v1/sys/seal-status').then(()=>process.exit(0)).catch(()=>process.exit(1))" 2>/dev/null; do
     i=$((i + 1))
     if [ "$i" -gt 60 ]; then
       echo "[entrypoint] OpenBao did not become ready in time" >&2
