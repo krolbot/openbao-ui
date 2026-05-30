@@ -63,6 +63,7 @@ export function useCreateEntity() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Entity created", silentError: true },
     mutationFn: async (vars: { name: string; policies?: string[] }) =>
       baoFetch({
         path: "identity/entity",
@@ -78,6 +79,7 @@ export function useDeleteEntity() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Entity deleted" },
     mutationFn: async (id: string) =>
       baoFetch({ path: `identity/entity/id/${id}`, method: "DELETE", namespace }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entities", namespace] }),
@@ -128,6 +130,7 @@ export function useCreateGroup() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Group created", silentError: true },
     mutationFn: async (vars: { name: string; type: string; policies?: string[] }) =>
       baoFetch({
         path: "identity/group",
@@ -143,6 +146,7 @@ export function useDeleteGroup() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Group deleted" },
     mutationFn: async (id: string) =>
       baoFetch({ path: `identity/group/id/${id}`, method: "DELETE", namespace }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["groups", namespace] }),

@@ -35,6 +35,7 @@ export function useEnableAuth() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Auth method enabled", silentError: true },
     mutationFn: async (vars: { path: string; type: string; description?: string }) =>
       baoFetch({
         path: `sys/auth/${vars.path.replace(/\/$/, "")}`,
@@ -50,6 +51,7 @@ export function useDisableAuth() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Auth method disabled" },
     mutationFn: async (path: string) =>
       baoFetch({
         path: `sys/auth/${path.replace(/\/$/, "")}`,
@@ -89,6 +91,7 @@ export function useCreateUserpassUser(mount: string) {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "User added", silentError: true },
     mutationFn: async (vars: { username: string; password: string; policies?: string[] }) =>
       baoFetch({
         path: `auth/${m(mount)}/users/${vars.username}`,
@@ -104,6 +107,7 @@ export function useDeleteUserpassUser(mount: string) {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "User deleted" },
     mutationFn: async (username: string) =>
       baoFetch({ path: `auth/${m(mount)}/users/${username}`, method: "DELETE", namespace }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["userpass-users", namespace, m(mount)] }),
@@ -137,6 +141,7 @@ export function useCreateApproleRole(mount: string) {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Role added", silentError: true },
     mutationFn: async (vars: { name: string; policies?: string[]; ttl?: string }) =>
       baoFetch({
         path: `auth/${m(mount)}/role/${vars.name}`,
@@ -152,6 +157,7 @@ export function useDeleteApproleRole(mount: string) {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Role deleted" },
     mutationFn: async (name: string) =>
       baoFetch({ path: `auth/${m(mount)}/role/${name}`, method: "DELETE", namespace }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["approle-roles", namespace, m(mount)] }),
@@ -215,6 +221,7 @@ export function useSetAuthTune(path: string) {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Tune saved", silentError: true },
     mutationFn: async (vars: {
       description?: string;
       default_lease_ttl?: string;
@@ -269,6 +276,7 @@ export function useSetLdapConfig(mount: string) {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Connection saved", silentError: true },
     mutationFn: async (cfg: LdapConfig & { bindpass?: string }) =>
       baoFetch({
         path: `auth/${m(mount)}/config`,

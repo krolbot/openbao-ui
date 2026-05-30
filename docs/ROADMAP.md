@@ -143,6 +143,10 @@ Each domain lists **coverage** (primary `/v1/` paths), the **UX** approach, and
   to the Overview home (System details), the KV secret detail (version history +
   danger zone), and Identity detail (IDs/aliases). The reusable pattern to keep
   new screens "simple but with depth on demand".
+- **Toasts** (`lib/toast.ts` + `components/toaster.tsx`): app-wide success/error
+  feedback wired once into the TanStack `MutationCache`. Every mutation surfaces
+  errors automatically; actions set `meta.success` for a confirmation, and forms
+  with inline errors opt out with `meta.silentError`.
 
 ---
 

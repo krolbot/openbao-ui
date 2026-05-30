@@ -43,6 +43,7 @@ export function useWritePolicy() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Policy saved", silentError: true },
     mutationFn: async (vars: { name: string; policy: string }) =>
       baoFetch({
         path: `sys/policies/acl/${vars.name}`,
@@ -61,6 +62,7 @@ export function useDeletePolicy() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Policy deleted" },
     mutationFn: async (name: string) =>
       baoFetch({
         path: `sys/policies/acl/${name}`,
@@ -79,6 +81,7 @@ export function useDeletePolicy() {
 export function useCapabilities() {
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { silentError: true },
     mutationFn: async (paths: string[]) => {
       const res = await baoFetch<{ data: Record<string, unknown> }>({
         path: "sys/capabilities-self",
@@ -176,6 +179,7 @@ export function useCreateToken() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Token created", silentError: true },
     mutationFn: async (vars: CreateTokenVars) => {
       const { role, ...body } = vars;
       const res = await baoFetch<{
@@ -196,6 +200,7 @@ export function useRevokeAccessor() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Token revoked" },
     mutationFn: async (accessor: string) =>
       baoFetch({
         path: "auth/token/revoke-accessor",
@@ -259,6 +264,7 @@ export function useRenewLease() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Lease renewed" },
     mutationFn: async (vars: { lease_id: string; increment?: number }) =>
       baoFetch({
         path: "sys/leases/renew",
@@ -274,6 +280,7 @@ export function useRevokeLease() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();
   return useMutation({
+    meta: { success: "Lease revoked" },
     mutationFn: async (vars: { lease_id: string; prefix?: boolean }) =>
       baoFetch({
         path: vars.prefix

@@ -160,6 +160,7 @@ export function useKvWrite(mount: string, path: string) {
   const m = stripSlash(mount);
   const p = stripSlash(path);
   return useMutation({
+    meta: { success: "Secret saved", silentError: true },
     mutationFn: async (vars: {
       data: Record<string, unknown>;
       cas?: number;
@@ -190,6 +191,14 @@ export function useKvVersionAction(
   const m = stripSlash(mount);
   const p = stripSlash(path);
   return useMutation({
+    meta: {
+      success:
+        action === "delete"
+          ? "Version soft-deleted"
+          : action === "undelete"
+            ? "Version restored"
+            : "Version destroyed",
+    },
     mutationFn: async (versions: number[]) =>
       baoFetch({
         path: `${m}/${action}/${p}`,
@@ -208,6 +217,7 @@ export function useKvDeleteMetadata(mount: string, path: string) {
   const m = stripSlash(mount);
   const p = stripSlash(path);
   return useMutation({
+    meta: { success: "Secret deleted" },
     mutationFn: async () =>
       baoFetch({
         path: `${m}/metadata/${p}`,

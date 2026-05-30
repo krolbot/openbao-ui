@@ -1,0 +1,54 @@
+"use client";
+
+import { CheckCircle2, X, XCircle } from "lucide-react";
+import * as React from "react";
+
+import { toast, ToastItem } from "@/lib/toast";
+import { cn } from "@/lib/utils";
+
+const TIMEOUT = 4000;
+
+export function Toaster() {
+  const [items, setItems] = React.useState<ToastItem[]>([]);
+
+  React.useEffect(() => {
+    return toast.subscribe((item) => {
+      setItems((prev) => [...prev, item]);
+      setTimeout(() => {
+        setItems((prev) => prev.filter((i) => i.id !== item.id));
+      }, TIMEOUT);
+    });
+  }, []);
+
+  const dismiss = (id: number) =>
+    setItems((prev) => prev.filter((i) => i.id !== id));
+
+  return (
+    <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex w-full max-w-sm flex-col gap-2">
+      {items.map((t) => (
+        <div
+          key={t.id}
+          role="status"
+          className={cn(
+            "pointer-events-auto flex items-start gap-2 rounded-lg border bg-card p-3 text-sm shadow-lg",
+            t.kind === "error" ? "border-destructive/40" : "border-emerald-500/40",
+          )}
+        >
+          {t.kind === "error" ? (
+            <XCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+          ) : (
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+          )}
+          <span className="min-w-0 flex-1 break-words">{t.message}</span>
+          <button
+            onClick={() => dismiss(t.id)}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Dismiss"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}

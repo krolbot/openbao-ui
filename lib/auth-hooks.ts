@@ -25,6 +25,7 @@ export function useSession() {
 export function useRenew() {
   const qc = useQueryClient();
   return useMutation({
+    meta: { success: "Token renewed" },
     mutationFn: async () => {
       const res = await fetch("/ui/api/auth/renew", { method: "POST" });
       if (!res.ok) throw new Error("renew failed");

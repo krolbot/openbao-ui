@@ -165,6 +165,7 @@ function CreateSecretDialog({
   const editorRef = React.useRef<EditorHandle>(null);
 
   const create = useMutation({
+    meta: { success: "Secret created", silentError: true },
     mutationFn: async () => {
       const path = join(folder, name.trim());
       const data = editorRef.current!.getData();
