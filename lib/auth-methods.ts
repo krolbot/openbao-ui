@@ -185,3 +185,97 @@ export function useGenerateSecretId() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Tune (applies to every auth mount): description + lease TTLs
+// ---------------------------------------------------------------------------
+
+export type AuthTune = {
+  description?: string;
+  default_lease_ttl: number;
+  max_lease_ttl: number;
+  token_type?: string;
+};
+
+export function useAuthTune(path: string) {
+  const { namespace } = useNamespace();
+  return useQuery({
+    queryKey: ["auth-tune", namespace, m(path)],
+    queryFn: async () => {
+      const res = await baoFetch<{ data: AuthTune }>({
+        path: `sys/auth/${m(path)}/tune`,
+        namespace,
+      });
+      return res.data;
+    },
+  });
+}
+
+export function useSetAuthTune(path: string) {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  return useMutation({
+    mutationFn: async (vars: {
+      description?: string;
+      default_lease_ttl?: string;
+      max_lease_ttl?: string;
+    }) =>
+      baoFetch({
+        path: `sys/auth/${m(path)}/tune`,
+        method: "POST",
+        namespace,
+        body: vars,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["auth-tune", namespace, m(path)] });
+      qc.invalidateQueries({ queryKey: ["auth-methods", namespace] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// LDAP connection config (a common method)
+// ---------------------------------------------------------------------------
+
+export type LdapConfig = {
+  url?: string;
+  binddn?: string;
+  userdn?: string;
+  groupdn?: string;
+  userattr?: string;
+  groupattr?: string;
+  insecure_tls?: boolean;
+};
+
+export function useLdapConfig(mount: string) {
+  const { namespace } = useNamespace();
+  return useQuery({
+    queryKey: ["ldap-config", namespace, m(mount)],
+    queryFn: async (): Promise<LdapConfig | null> => {
+      try {
+        const res = await baoFetch<{ data: LdapConfig }>({
+          path: `auth/${m(mount)}/config`,
+          namespace,
+        });
+        return res.data;
+      } catch {
+        return null; // not configured yet
+      }
+    },
+  });
+}
+
+export function useSetLdapConfig(mount: string) {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  return useMutation({
+    mutationFn: async (cfg: LdapConfig & { bindpass?: string }) =>
+      baoFetch({
+        path: `auth/${m(mount)}/config`,
+        method: "POST",
+        namespace,
+        body: cfg,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["ldap-config", namespace, m(mount)] }),
+  });
+}

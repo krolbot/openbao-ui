@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CopyButton } from "@/components/copy-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
+import { Disclosure } from "@/components/ui/disclosure";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BaoError } from "@/lib/bao-client";
@@ -15,6 +16,7 @@ import {
   useApproleRoleId,
   useApproleRoles,
   useAuthMethods,
+  useAuthTune,
   useCreateApproleRole,
   useCreateUserpassUser,
   useDeleteApproleRole,
@@ -22,6 +24,9 @@ import {
   useDisableAuth,
   useEnableAuth,
   useGenerateSecretId,
+  useLdapConfig,
+  useSetAuthTune,
+  useSetLdapConfig,
   useUserpassUsers,
 } from "@/lib/auth-methods";
 
@@ -52,32 +57,31 @@ export default function AuthMethodsPage() {
         ) : (
           <ul>
             {(methods.data ?? []).map((mth) => (
-              <li key={mth.path}>
+              <li
+                key={mth.path}
+                className={`group flex items-center gap-2 rounded-md pr-1 hover:bg-accent ${
+                  current?.path === mth.path ? "bg-accent" : ""
+                }`}
+              >
                 <button
                   onClick={() => setSelected(mth)}
-                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent ${
-                    current?.path === mth.path ? "bg-accent" : ""
-                  }`}
+                  className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm"
                 >
-                  <Key className="size-4 text-muted-foreground" />
+                  <Key className="size-4 shrink-0 text-muted-foreground" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-mono">{mth.path}</span>
                     <span className="block text-xs text-muted-foreground">{mth.type}</span>
                   </span>
-                  {mth.path !== "token/" ? (
-                    <span
-                      role="button"
-                      title="Disable"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDisabling(mth);
-                      }}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="size-4" />
-                    </span>
-                  ) : null}
                 </button>
+                {mth.path !== "token/" ? (
+                  <button
+                    title="Disable"
+                    onClick={() => setDisabling(mth)}
+                    className="rounded p-1 text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -125,24 +129,159 @@ export default function AuthMethodsPage() {
 
 function MethodConfig({ method }: { method: AuthMount }) {
   return (
-    <div>
-      <div className="mb-6">
+    <div className="mx-auto flex max-w-3xl flex-col gap-5">
+      <div>
         <h2 className="font-mono text-lg font-semibold">{method.path}</h2>
         <p className="text-sm text-muted-foreground">
           type <span className="font-medium text-foreground">{method.type}</span>
           {method.description ? ` · ${method.description}` : ""}
         </p>
+        {method.accessor ? (
+          <p className="font-mono text-xs text-muted-foreground">{method.accessor}</p>
+        ) : null}
       </div>
+
+      {/* type-specific config leads (the common task) */}
       {method.type === "userpass" ? (
         <UserpassConfig mount={method.path} />
       ) : method.type === "approle" ? (
         <ApproleConfig mount={method.path} />
+      ) : method.type === "ldap" ? (
+        <LdapConfigPane mount={method.path} />
       ) : (
         <p className="text-sm text-muted-foreground">
-          Dedicated configuration UI for <span className="font-mono">{method.type}</span> is coming
-          in a later phase. The method is enabled and usable via the API/CLI.
+          A dedicated configuration UI for <span className="font-mono">{method.type}</span> is on the
+          roadmap. The method is enabled and usable via the API/CLI; you can still tune it below.
         </p>
       )}
+
+      {/* tune applies to every method — kept behind a disclosure */}
+      <TuneSection path={method.path} />
+    </div>
+  );
+}
+
+function TuneSection({ path }: { path: string }) {
+  const tune = useAuthTune(path);
+  const save = useSetAuthTune(path);
+  const [description, setDescription] = React.useState("");
+  const [def, setDef] = React.useState("");
+  const [max, setMax] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+  const [saved, setSaved] = React.useState(false);
+
+  React.useEffect(() => {
+    if (tune.data) {
+      setDescription(tune.data.description ?? "");
+      setDef(String(tune.data.default_lease_ttl ?? ""));
+      setMax(String(tune.data.max_lease_ttl ?? ""));
+    }
+  }, [tune.data]);
+
+  return (
+    <Disclosure label="Tune (lease TTLs & description)">
+      <form
+        className="flex flex-col gap-3"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setError(null);
+          setSaved(false);
+          try {
+            await save.mutateAsync({
+              description,
+              default_lease_ttl: def,
+              max_lease_ttl: max,
+            });
+            setSaved(true);
+          } catch (err) {
+            setError(errMsg(err));
+          }
+        }}
+      >
+        <Field label="Description">
+          <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+        </Field>
+        <div className="flex gap-3">
+          <Field label="Default lease TTL">
+            <Input value={def} onChange={(e) => setDef(e.target.value)} placeholder="e.g. 768h or seconds" />
+          </Field>
+          <Field label="Max lease TTL">
+            <Input value={max} onChange={(e) => setMax(e.target.value)} placeholder="e.g. 768h or seconds" />
+          </Field>
+        </div>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <div className="flex items-center gap-3">
+          <Button type="submit" size="sm" disabled={save.isPending}>
+            {save.isPending ? "Saving…" : "Save tune"}
+          </Button>
+          {saved ? <span className="text-xs text-emerald-600">Saved</span> : null}
+        </div>
+      </form>
+    </Disclosure>
+  );
+}
+
+function LdapConfigPane({ mount }: { mount: string }) {
+  const cfg = useLdapConfig(mount);
+  const save = useSetLdapConfig(mount);
+  const [f, setF] = React.useState({ url: "", binddn: "", bindpass: "", userdn: "", groupdn: "" });
+  const [error, setError] = React.useState<string | null>(null);
+  const [saved, setSaved] = React.useState(false);
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setF((s) => ({ ...s, [k]: e.target.value }));
+
+  React.useEffect(() => {
+    if (cfg.data) {
+      setF((s) => ({
+        ...s,
+        url: cfg.data!.url ?? "",
+        binddn: cfg.data!.binddn ?? "",
+        userdn: cfg.data!.userdn ?? "",
+        groupdn: cfg.data!.groupdn ?? "",
+      }));
+    }
+  }, [cfg.data]);
+
+  return (
+    <div>
+      <h3 className="mb-3 text-sm font-medium">Connection</h3>
+      <form
+        className="flex flex-col gap-3"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setError(null);
+          setSaved(false);
+          try {
+            await save.mutateAsync({
+              url: f.url,
+              binddn: f.binddn,
+              bindpass: f.bindpass || undefined,
+              userdn: f.userdn,
+              groupdn: f.groupdn,
+            });
+            setSaved(true);
+          } catch (err) {
+            setError(errMsg(err));
+          }
+        }}
+      >
+        <Field label="LDAP URL"><Input value={f.url} onChange={set("url")} className="font-mono" placeholder="ldaps://ldap.example.com" /></Field>
+        <div className="flex gap-3">
+          <Field label="Bind DN"><Input value={f.binddn} onChange={set("binddn")} className="font-mono" /></Field>
+          <Field label="Bind password"><Input type="password" value={f.bindpass} onChange={set("bindpass")} /></Field>
+        </div>
+        <div className="flex gap-3">
+          <Field label="User DN"><Input value={f.userdn} onChange={set("userdn")} className="font-mono" /></Field>
+          <Field label="Group DN"><Input value={f.groupdn} onChange={set("groupdn")} className="font-mono" /></Field>
+        </div>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <div className="flex items-center gap-3">
+          <Button type="submit" size="sm" disabled={save.isPending}>
+            {save.isPending ? "Saving…" : "Save connection"}
+          </Button>
+          {saved ? <span className="text-xs text-emerald-600">Saved</span> : null}
+        </div>
+      </form>
     </div>
   );
 }
