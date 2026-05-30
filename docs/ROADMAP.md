@@ -138,6 +138,11 @@ Each domain lists **coverage** (primary `/v1/` paths), the **UX** approach, and
 - Typed-confirm modals for all 🔴 ops; capability gating everywhere; consistent
   error surfacing of OpenBao `errors[]`; toasts; keyboard nav; dark mode;
   tools (`sys/tools/random|hash`), wrapped-token utility.
+- **Inline progressive disclosure** (`components/ui/disclosure.tsx`): views are
+  simple by default and reveal advanced/rare/dangerous detail on demand. Applied
+  to the Overview home (System details), the KV secret detail (version history +
+  danger zone), and Identity detail (IDs/aliases). The reusable pattern to keep
+  new screens "simple but with depth on demand".
 
 ---
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { Pencil, RotateCcw } from "lucide-react";
 import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -9,8 +9,8 @@ import {
   KvKeyValueEditor,
   KvValueViewer,
 } from "@/components/kv/kv-fields";
-import { VersionSidebar } from "@/components/kv/version-sidebar";
 import { Button } from "@/components/ui/button";
+import { Disclosure } from "@/components/ui/disclosure";
 import { BaoError } from "@/lib/bao-client";
 import {
   useKvDeleteMetadata,
@@ -19,9 +19,16 @@ import {
   useKvVersionAction,
   useKvWrite,
 } from "@/lib/kv";
+import { cn } from "@/lib/utils";
 
 const errMsg = (e: unknown) =>
   e instanceof BaoError ? e.errors.join(", ") : "Something went wrong";
+
+function versionStatus(meta?: { deletion_time: string; destroyed: boolean }) {
+  if (meta?.destroyed) return { label: "destroyed", cls: "text-destructive" };
+  if (meta?.deletion_time) return { label: "deleted", cls: "text-amber-500" };
+  return { label: "active", cls: "text-emerald-500" };
+}
 
 export function SecretDetail({
   mount,
@@ -73,6 +80,10 @@ export function SecretDetail({
   const isDestroyed = !!versionMeta?.destroyed;
   const isCurrent = viewing === currentVersion;
 
+  const versions = Object.entries(meta.data.versions)
+    .map(([v, vmeta]) => ({ version: Number(v), ...vmeta }))
+    .sort((a, b) => b.version - a.version);
+
   async function save() {
     setError(null);
     let data: Record<string, unknown>;
@@ -83,7 +94,6 @@ export function SecretDetail({
       return;
     }
     try {
-      // optimistic-concurrency: guard against a racing writer
       await write.mutateAsync({ data, cas: currentVersion });
       setEditing(false);
       setVersion(undefined);
@@ -109,36 +119,37 @@ export function SecretDetail({
         <div className="min-w-0">
           <div className="truncate font-mono font-medium">{secretPath}</div>
           <div className="text-xs text-muted-foreground">
-            viewing v{viewing} · current v{currentVersion}
+            {isCurrent ? `version ${viewing}` : `viewing v${viewing} · current v${currentVersion}`}
           </div>
         </div>
-        <div className="flex gap-2">
-          {!editing && isCurrent && !isDeleted && !isDestroyed ? (
-            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-              <Pencil /> Edit
-            </Button>
-          ) : null}
-          {!editing && !isCurrent && !isDestroyed ? (
-            <Button size="sm" variant="outline" onClick={restore}>
-              <RotateCcw /> Restore this version
-            </Button>
-          ) : null}
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => setConfirm("deleteSecret")}
-          >
-            <Trash2 /> Delete
+        {!editing && isCurrent && !isDeleted && !isDestroyed ? (
+          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+            <Pencil /> Edit
           </Button>
-        </div>
+        ) : null}
       </div>
 
-      <div className="flex flex-1 gap-4 overflow-auto p-4">
-        <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 overflow-auto p-4">
+        <div className="mx-auto max-w-3xl">
           {error ? (
             <p className="mb-3 text-sm text-destructive">{error}</p>
           ) : null}
 
+          {/* viewing an older version — gentle banner + one-click restore */}
+          {!editing && !isCurrent ? (
+            <div className="mb-3 flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">
+                Viewing older version v{viewing}.
+              </span>
+              {!isDestroyed ? (
+                <Button size="sm" variant="outline" onClick={restore}>
+                  <RotateCcw /> Restore this version
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* --- the simple default: the values --- */}
           {editing ? (
             <>
               <KvKeyValueEditor
@@ -178,38 +189,74 @@ export function SecretDetail({
               </Button>
             </div>
           ) : (
-            <>
-              <KvValueViewer data={secret.data?.data ?? {}} />
-              {isCurrent ? (
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setConfirm("deleteVersion")}
-                  >
-                    Soft-delete this version
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setConfirm("destroyVersion")}
-                  >
-                    Destroy this version
-                  </Button>
-                </div>
-              ) : null}
-            </>
+            <KvValueViewer data={secret.data?.data ?? {}} />
           )}
-        </div>
 
-        <VersionSidebar
-          metadata={meta.data}
-          selected={viewing!}
-          onSelect={(v) => {
-            setVersion(v);
-            setEditing(false);
-          }}
-        />
+          {/* --- depth on demand: history + advanced, hidden by default --- */}
+          {!editing ? (
+            <div className="mt-4 flex flex-col gap-3">
+              <Disclosure label="Version history" count={versions.length}>
+                <ul className="flex flex-col gap-1">
+                  {versions.map((v) => {
+                    const status = versionStatus(v);
+                    return (
+                      <li key={v.version}>
+                        <button
+                          onClick={() => setVersion(v.version)}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent",
+                            v.version === viewing && "bg-accent",
+                          )}
+                        >
+                          <span className="font-medium">
+                            v{v.version}
+                            {v.version === currentVersion ? (
+                              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                current
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="flex items-center gap-3">
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(v.created_time).toLocaleString()}
+                            </span>
+                            <span className={cn("text-xs", status.cls)}>
+                              {status.label}
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Disclosure>
+
+              <Disclosure label="Advanced & danger zone" tone="danger">
+                <div className="flex flex-col gap-3 text-sm">
+                  {!isDeleted && !isDestroyed ? (
+                    <Action
+                      title={`Soft-delete v${viewing}`}
+                      desc="Hide this version; it can be undeleted later."
+                      onClick={() => setConfirm("deleteVersion")}
+                    />
+                  ) : null}
+                  {!isDestroyed ? (
+                    <Action
+                      title={`Destroy v${viewing}`}
+                      desc="Permanently remove this version's data."
+                      onClick={() => setConfirm("destroyVersion")}
+                    />
+                  ) : null}
+                  <Action
+                    title="Delete entire secret"
+                    desc="Remove all versions and metadata for this path."
+                    onClick={() => setConfirm("deleteSecret")}
+                  />
+                </div>
+              </Disclosure>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <ConfirmDialog
@@ -251,6 +298,28 @@ export function SecretDetail({
         confirmLabel="Delete everything"
         pending={deleteAll.isPending}
       />
+    </div>
+  );
+}
+
+function Action({
+  title,
+  desc,
+  onClick,
+}: {
+  title: string;
+  desc: string;
+  onClick: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <div className="font-medium">{title}</div>
+        <div className="text-xs text-muted-foreground">{desc}</div>
+      </div>
+      <Button variant="outline" size="sm" onClick={onClick}>
+        {title.startsWith("Delete entire") ? "Delete" : title.split(" ")[0]}
+      </Button>
     </div>
   );
 }

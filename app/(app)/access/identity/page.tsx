@@ -6,6 +6,7 @@ import * as React from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
+import { Disclosure } from "@/components/ui/disclosure";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -125,26 +126,33 @@ function EntitiesPane() {
         ) : (
           <div className="flex flex-col gap-4">
             <div className="flex items-start justify-between">
-              <div>
-                <div className="text-lg font-semibold">{entity.data.name}</div>
-                <div className="font-mono text-xs text-muted-foreground">{entity.data.id}</div>
-              </div>
+              <div className="text-lg font-semibold">{entity.data.name}</div>
               <Button variant="destructive" size="sm" onClick={() => setConfirm(true)}>
                 <Trash2 /> Delete
               </Button>
             </div>
             <Row label="Policies"><PolicyBadges policies={entity.data.policies} /></Row>
-            <Row label="Aliases">
-              {entity.data.aliases?.length ? (
-                <ul className="text-sm">
-                  {entity.data.aliases.map((a, i) => (
-                    <li key={i} className="font-mono">{a.name} <span className="text-muted-foreground">@ {a.mount_path}</span></li>
-                  ))}
-                </ul>
-              ) : (
-                <span className="text-sm text-muted-foreground">none</span>
-              )}
-            </Row>
+            <Disclosure label="Details">
+              <dl className="grid grid-cols-[6rem_1fr] gap-y-2 text-sm">
+                <dt className="text-muted-foreground">ID</dt>
+                <dd className="font-mono break-all">{entity.data.id}</dd>
+                <dt className="text-muted-foreground">Aliases</dt>
+                <dd>
+                  {entity.data.aliases?.length ? (
+                    <ul>
+                      {entity.data.aliases.map((a, i) => (
+                        <li key={i} className="font-mono">
+                          {a.name}{" "}
+                          <span className="text-muted-foreground">@ {a.mount_path}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="text-muted-foreground">none</span>
+                  )}
+                </dd>
+              </dl>
+            </Disclosure>
           </div>
         )}
       </div>
@@ -201,15 +209,11 @@ function GroupsPane() {
         ) : (
           <div className="flex flex-col gap-4">
             <div className="flex items-start justify-between">
-              <div>
-                <div className="text-lg font-semibold">{group.data.name}</div>
-                <div className="font-mono text-xs text-muted-foreground">{group.data.id}</div>
-              </div>
+              <div className="text-lg font-semibold">{group.data.name}</div>
               <Button variant="destructive" size="sm" onClick={() => setConfirm(true)}>
                 <Trash2 /> Delete
               </Button>
             </div>
-            <Row label="Type"><span className="text-sm">{group.data.type}</span></Row>
             <Row label="Policies"><PolicyBadges policies={group.data.policies} /></Row>
             <Row label="Members">
               <span className="text-sm text-muted-foreground">
@@ -217,6 +221,14 @@ function GroupsPane() {
                 {(group.data.member_entity_ids?.length ?? 0) === 1 ? "y" : "ies"}
               </span>
             </Row>
+            <Disclosure label="Details">
+              <dl className="grid grid-cols-[6rem_1fr] gap-y-2 text-sm">
+                <dt className="text-muted-foreground">ID</dt>
+                <dd className="font-mono break-all">{group.data.id}</dd>
+                <dt className="text-muted-foreground">Type</dt>
+                <dd>{group.data.type}</dd>
+              </dl>
+            </Disclosure>
           </div>
         )}
       </div>
