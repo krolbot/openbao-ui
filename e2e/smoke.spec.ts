@@ -23,3 +23,28 @@ test("login and browse the KV engine", async ({ page }) => {
   // the KV browser renders (breadcrumb shows the mount)
   await expect(page.getByRole("link", { name: "secret", exact: true })).toBeVisible();
 });
+
+test("access section: policies, capabilities, tokens", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Access" }).click();
+
+  // Policies tab lists the built-in policies and loads HCL into the editor
+  await expect(page.getByRole("button", { name: "default" })).toBeVisible();
+  await page.getByRole("button", { name: "default" }).click();
+  await expect(page.locator("textarea")).toBeVisible();
+
+  // Capabilities tester returns capabilities for a path
+  await page.getByRole("link", { name: "Capabilities" }).click();
+  await page.fill("#cap-path", "secret/data/anything");
+  await page.getByRole("button", { name: "Check" }).click();
+  await expect(page.getByText("Capabilities on")).toBeVisible();
+
+  // Tokens tab shows the active-tokens table
+  await page.getByRole("link", { name: "Tokens" }).click();
+  await expect(page.getByText("active token")).toBeVisible();
+});
+

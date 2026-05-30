@@ -9,7 +9,7 @@ import { NamespaceSwitcher } from "@/components/namespace-switcher";
 const NAV = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/secrets", label: "Secrets", icon: KeyRound },
-  { href: "/access", label: "Access", icon: Users, disabled: true },
+  { href: "/access", label: "Access", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings, disabled: true },
 ];
 
