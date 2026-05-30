@@ -11,10 +11,10 @@ export function middleware(req: NextRequest) {
   // Next includes it in the pathname for this runtime version.
   const rel = req.nextUrl.pathname.replace(/^\/ui/, "") || "/";
 
+  // API routes self-authenticate and return JSON status codes (never redirect
+  // an XHR to the login HTML); only page navigations are gated here.
   const isPublic =
-    rel === "/login" ||
-    rel.startsWith("/login/") ||
-    rel.startsWith("/api/auth/");
+    rel === "/login" || rel.startsWith("/login/") || rel.startsWith("/api/");
 
   if (isPublic) return NextResponse.next();
 

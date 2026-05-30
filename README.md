@@ -30,23 +30,33 @@ Only port **3000** is exposed; OpenBao stays internal.
 
 ## Local development
 
-Run OpenBao in dev mode and the UI separately:
+Run OpenBao (or the bundled mock) and the UI separately:
 
 ```bash
-# 1. OpenBao (in one terminal)
+# 1. Backend (one terminal) — real OpenBao …
 bao server -dev -dev-root-token-id=root        # listens on :8200
+#    … or the dependency-free mock (in-memory KV v2, no install needed):
+pnpm mock:bao                                   # listens on :8200, token: root
 
-# 2. UI (in another terminal)
+# 2. UI (another terminal)
 pnpm install
 pnpm dev                                        # http://localhost:3000
 ```
 
 Open <http://localhost:3000> → you'll be redirected to `/ui/login`. Sign in with
-the **Token** method using `root`. The Overview page then shows live seal status,
-your token's policies, and the enabled secret engines — all fetched through the
-proxy, proving the frontend ↔ backend wiring end to end.
+the **Token** method using `root`. The Overview page shows live seal status, your
+token's policies, and the enabled secret engines; **Secrets** lets you browse KV
+engines, create/edit secrets, view version history, and roll back — all fetched
+through the proxy, proving the frontend ↔ backend wiring end to end.
 
 Config via env (see `.env.example`): `OPENBAO_ADDR`, `BAO_COOKIE_NAME`.
+
+### Architecture detail: client data flow
+
+Interactive pages use **TanStack Query** against an **authenticated BFF proxy**
+(`/ui/api/bao/<path>`). The proxy injects the httpOnly token and the
+`X-Vault-Namespace` header server-side, so the token is never exposed to client
+JS while the UI still gets live, cacheable reads/writes.
 
 ## Single image (UI + OpenBao)
 

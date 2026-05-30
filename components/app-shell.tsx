@@ -2,12 +2,13 @@ import { KeyRound, LayoutDashboard, Settings, Users } from "lucide-react";
 import Link from "next/link";
 
 import { LogoutButton } from "@/components/logout-button";
+import { NamespaceSwitcher } from "@/components/namespace-switcher";
 
 // Infisical-style: a slim, quiet sidebar with a few top-level destinations.
-// Most are placeholders for now — Secrets/Access/Settings land in later work.
+// Access/Settings are placeholders for later phases.
 const NAV = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
-  { href: "/secrets", label: "Secrets", icon: KeyRound, disabled: true },
+  { href: "/secrets", label: "Secrets", icon: KeyRound },
   { href: "/access", label: "Access", icon: Users, disabled: true },
   { href: "/settings", label: "Settings", icon: Settings, disabled: true },
 ];
@@ -27,6 +28,10 @@ export function AppShell({
             <KeyRound className="size-4" />
           </div>
           <span className="font-semibold">OpenBao</span>
+        </div>
+
+        <div className="border-b p-3">
+          <NamespaceSwitcher />
         </div>
 
         <nav className="flex-1 space-y-1 p-3">

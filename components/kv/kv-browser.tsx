@@ -1,0 +1,232 @@
+"use client";
+
+import {
+  ChevronRight,
+  FileKey,
+  Folder,
+  KeyRound,
+  Plus,
+} from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import Link from "next/link";
+import * as React from "react";
+
+import { SecretDetail } from "@/components/kv/secret-detail";
+import {
+  EditorHandle,
+  KvKeyValueEditor,
+} from "@/components/kv/kv-fields";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogHeader } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { BaoError, baoFetch } from "@/lib/bao-client";
+import { useKvList } from "@/lib/kv";
+import { useNamespace } from "@/lib/namespace";
+
+const join = (...parts: string[]) =>
+  parts.filter(Boolean).join("/").replace(/\/+/g, "/");
+
+export function KvBrowser({
+  mount,
+  segments,
+}: {
+  mount: string;
+  segments: string[];
+}) {
+  const folder = segments.join("/");
+  const list = useKvList(mount, folder);
+  const [selected, setSelected] = React.useState<string | null>(null);
+  const [creating, setCreating] = React.useState(false);
+
+  const keys = list.data ?? [];
+  const folders = keys.filter((k) => k.endsWith("/"));
+  const secrets = keys.filter((k) => !k.endsWith("/"));
+
+  const base = `/secrets/${mount}`;
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* breadcrumbs */}
+      <div className="flex items-center gap-1 border-b px-4 py-3 text-sm">
+        <KeyRound className="mr-1 size-4 text-muted-foreground" />
+        <Link href={base} className="font-medium hover:underline">
+          {mount}
+        </Link>
+        {segments.map((seg, i) => (
+          <React.Fragment key={i}>
+            <ChevronRight className="size-3.5 text-muted-foreground" />
+            <Link
+              href={`${base}/${segments.slice(0, i + 1).join("/")}`}
+              className="hover:underline"
+            >
+              {seg}
+            </Link>
+          </React.Fragment>
+        ))}
+        <div className="ml-auto">
+          <Button size="sm" onClick={() => setCreating(true)}>
+            <Plus /> New secret
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-1">
+        {/* key list */}
+        <div className="w-72 shrink-0 overflow-auto border-r">
+          {list.isLoading ? (
+            <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+          ) : list.isError ? (
+            <p className="p-4 text-sm text-destructive">
+              {list.error instanceof BaoError
+                ? list.error.errors.join(", ")
+                : "Failed to list"}
+            </p>
+          ) : keys.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">
+              No secrets here yet.
+            </p>
+          ) : (
+            <ul className="p-2">
+              {folders.map((f) => (
+                <li key={f}>
+                  <Link
+                    href={`${base}/${join(folder, f)}`}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+                  >
+                    <Folder className="size-4 text-muted-foreground" />
+                    <span className="truncate">{f.replace(/\/$/, "")}</span>
+                  </Link>
+                </li>
+              ))}
+              {secrets.map((s) => (
+                <li key={s}>
+                  <button
+                    onClick={() => setSelected(join(folder, s))}
+                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent ${
+                      selected === join(folder, s) ? "bg-accent font-medium" : ""
+                    }`}
+                  >
+                    <FileKey className="size-4 text-muted-foreground" />
+                    <span className="truncate">{s}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* detail */}
+        <div className="min-w-0 flex-1">
+          {selected ? (
+            <SecretDetail
+              mount={mount}
+              secretPath={selected}
+              onDeleted={() => setSelected(null)}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              Select a secret to view it, or create a new one.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {creating ? (
+        <CreateSecretDialog
+          mount={mount}
+          folder={folder}
+          onClose={() => setCreating(false)}
+          onCreated={(p) => {
+            setCreating(false);
+            setSelected(p);
+            list.refetch();
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function CreateSecretDialog({
+  mount,
+  folder,
+  onClose,
+  onCreated,
+}: {
+  mount: string;
+  folder: string;
+  onClose: () => void;
+  onCreated: (path: string) => void;
+}) {
+  const { namespace } = useNamespace();
+  const [name, setName] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+  const editorRef = React.useRef<EditorHandle>(null);
+
+  const create = useMutation({
+    mutationFn: async () => {
+      const path = join(folder, name.trim());
+      const data = editorRef.current!.getData();
+      await baoFetch({
+        path: `${mount}/data/${path}`,
+        method: "POST",
+        namespace,
+        body: { data, options: { cas: 0 } }, // cas:0 == create only
+      });
+      return path;
+    },
+    onSuccess: onCreated,
+    onError: (e) =>
+      setError(e instanceof BaoError ? e.errors.join(", ") : "Failed to create"),
+  });
+
+  return (
+    <Dialog open onClose={onClose} className="max-w-xl">
+      <DialogHeader
+        title="New secret"
+        description={folder ? `In folder /${folder}` : "At the mount root"}
+        onClose={onClose}
+      />
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setError(null);
+          if (!name.trim()) {
+            setError("Name is required");
+            return;
+          }
+          create.mutate();
+        }}
+      >
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="secret-name">Path / name</Label>
+          <Input
+            id="secret-name"
+            placeholder="e.g. api/stripe (subfolders allowed)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="font-mono"
+            autoFocus
+          />
+        </div>
+        <div>
+          <Label>Data</Label>
+          <div className="mt-2">
+            <KvKeyValueEditor ref={editorRef} initial={{}} />
+          </div>
+        </div>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={create.isPending}>
+            {create.isPending ? "Creating…" : "Create secret"}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
