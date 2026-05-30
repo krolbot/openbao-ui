@@ -62,6 +62,8 @@ export function CommandPalette() {
       { id: "overview", label: "Overview", icon: <LayoutDashboard />, run: go("/") },
       { id: "secrets", label: "Secrets", icon: <KeyRound />, run: go("/secrets") },
       { id: "policies", label: "Access · Policies", icon: <Shield />, run: go("/access") },
+      { id: "auth", label: "Access · Auth Methods", icon: <Shield />, run: go("/access/auth") },
+      { id: "identity", label: "Access · Identity", icon: <Shield />, run: go("/access/identity") },
       { id: "capabilities", label: "Access · Capabilities", icon: <Shield />, run: go("/access/capabilities") },
       { id: "tokens", label: "Access · Tokens", icon: <Shield />, run: go("/access/tokens") },
       { id: "leases", label: "Access · Leases", icon: <Shield />, run: go("/access/leases") },

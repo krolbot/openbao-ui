@@ -67,3 +67,19 @@ test("foundation: command palette and dark mode", async ({ page }) => {
   await expect(page.locator("html")).toHaveClass(/dark/);
 });
 
+test("access management: auth methods and identity", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  // Auth Methods tab lists enabled methods (token is always present)
+  await page.goto("/ui/access/auth");
+  await expect(page.getByRole("button", { name: /token\// })).toBeVisible();
+
+  // Identity tab shows the Entities/Groups switcher
+  await page.goto("/ui/access/identity");
+  await expect(page.getByRole("tab", { name: "Entities" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Groups" })).toBeVisible();
+});
+
