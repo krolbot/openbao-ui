@@ -29,6 +29,34 @@ test("login and browse the KV engine", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Compare" })).toBeVisible();
 });
 
+test("kv lifecycle: create, view, delete a secret", async ({ page }) => {
+  const name = `e2e/secret-${Date.now()}`;
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui/secrets/secret");
+  await page.getByRole("button", { name: "New secret" }).click();
+  await page.fill("#secret-name", name);
+  await page.getByPlaceholder("key").first().fill("api_key");
+  await page.getByPlaceholder("value").first().fill("s3cr3t-value");
+  await page.getByRole("button", { name: "Create secret" }).click();
+
+  // the new secret is selected and its key is shown
+  await expect(page.getByText("version 1")).toBeVisible();
+  await expect(page.getByText("api_key")).toBeVisible();
+
+  // delete it via the danger-zone disclosure + typed confirm
+  await page.getByRole("button", { name: /Advanced & danger zone/ }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.locator("#confirm-input").fill("delete");
+  await page.getByRole("button", { name: "Delete everything" }).click();
+
+  // detail panel clears
+  await expect(page.getByText("Select a secret to view it, or create a new one.")).toBeVisible();
+});
+
 test("access section: policies, capabilities, tokens", async ({ page }) => {
   await page.goto("/");
   await page.fill("#token", TOKEN);

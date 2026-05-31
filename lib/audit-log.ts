@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import type { AuditRecord } from "@/app/api/audit/route";
+import type { AuditRecord } from "@/lib/audit-parse";
 
 export type { AuditRecord };
 

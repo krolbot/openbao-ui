@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BaoError } from "@/lib/bao-client";
+import { fromBase64, toBase64 } from "@/lib/encoding";
 import {
   useCreateTransitKey,
   useDecrypt,
@@ -32,14 +33,6 @@ const KEY_TYPES = [
 
 const errMsg = (e: unknown) =>
   e instanceof BaoError ? e.errors.join(", ") : "Something went wrong";
-const toB64 = (s: string) => btoa(unescape(encodeURIComponent(s)));
-const fromB64 = (b: string) => {
-  try {
-    return decodeURIComponent(escape(atob(b)));
-  } catch {
-    return atob(b);
-  }
-};
 
 export function TransitDashboard({ mount }: { mount: string }) {
   const keys = useTransitKeys(mount);
@@ -190,7 +183,7 @@ function CryptoTool({ mount, name }: { mount: string; name: string }) {
             onClick={async () => {
               setErr(null);
               try {
-                setOutCipher(await encrypt.mutateAsync(toB64(plain)));
+                setOutCipher(await encrypt.mutateAsync(toBase64(plain)));
               } catch (e) {
                 setErr(errMsg(e));
               }
@@ -221,7 +214,7 @@ function CryptoTool({ mount, name }: { mount: string; name: string }) {
             onClick={async () => {
               setErr(null);
               try {
-                setOutPlain(fromB64(await decrypt.mutateAsync(cipher.trim())));
+                setOutPlain(fromBase64(await decrypt.mutateAsync(cipher.trim())));
               } catch (e) {
                 setErr(errMsg(e));
               }
