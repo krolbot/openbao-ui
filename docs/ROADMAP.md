@@ -186,7 +186,7 @@ Each domain lists **coverage** (primary `/v1/` paths), the **UX** approach, and
 | **3** ✅ | Authz core | F, G | ACL HCL editor, capabilities tester, token create/list/revoke, lease browser |
 | **4** ✅ | Access mgmt | D, E | Auth methods enable/disable + per-method config (userpass/AppRole/LDAP bespoke; jwt/oidc/kubernetes/cert via a generic field-spec engine) + Tune; identity entities + groups; MFA (TOTP methods + login enforcements) |
 | **5** ✅ | Engines | C | Type-dispatched engine dashboards: **Transit** (encrypt/decrypt/rotate), **PKI** (root/roles/issue), **SSH** (CA/roles/sign), **Database** (connections/roles/generate creds) |
-| **6** ◑ | Operations | H | Status dashboard (seal/HA/leader/key-term/storage), rotate key + seal, audit listing (read-only; OpenBao manages declaratively), rate-limit quotas, plugin catalog. Remaining: init wizard, unseal/rekey/generate-root flows, raft snapshots, audit-log viewer |
+| **6** ✅ | Operations | H | Bootstrap (init wizard → unseal flow, pre-login), status dashboard (seal/HA/leader/key-term/storage), rotate key + seal, audit listing (read-only; OpenBao manages declaratively), rate-limit quotas, plugin catalog. Deferred (advanced/infra-dependent): rekey/generate-root, raft snapshots (need raft storage), audit-log viewer (→ Phase 7) |
 | **7** | Differentiators | — | Cross-env **comparison matrix**, audit-log store/streaming, secret-sync/integrations, PR-style change & access requests |
 
 ---

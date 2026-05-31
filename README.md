@@ -72,8 +72,9 @@ Then visit <http://localhost:3000> and log in with token `root`.
 - **Dev mode** (`BAO_DEV=1`, default): in-memory, auto-unsealed, fixed root
   token — great for trying it out, **not** for production.
 - **Non-dev** (`BAO_DEV=0`): boots from `docker/openbao.hcl` (file storage). The
-  instance starts **sealed/uninitialized** — initialize and unseal it via the
-  API/CLI, and mount a volume at `/bao/file`, before the UI is usable.
+  instance starts **sealed/uninitialized** — the UI detects this at `/ui/login`
+  and walks you through the built-in **initialize → save keys → unseal** flow.
+  Mount a volume at `/bao/file` to persist storage.
 
 ## coss ui
 

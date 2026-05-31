@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+import { SealGate } from "@/components/seal-gate";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,9 +28,11 @@ const METHODS = [
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
-      <LoginForm />
-    </Suspense>
+    <SealGate>
+      <Suspense fallback={null}>
+        <LoginForm />
+      </Suspense>
+    </SealGate>
   );
 }
 
