@@ -185,7 +185,7 @@ Each domain lists **coverage** (primary `/v1/` paths), the **UX** approach, and
 | **2** ✅ | **KV hero** | B | KV v2 browse/CRUD, versions + rollback, masked values, soft-delete/destroy, create dialog, cubbyhole-ready |
 | **3** ✅ | Authz core | F, G | ACL HCL editor, capabilities tester, token create/list/revoke, lease browser |
 | **4** ✅ | Access mgmt | D, E | Auth methods enable/disable + per-method config (userpass/AppRole/LDAP bespoke; jwt/oidc/kubernetes/cert via a generic field-spec engine) + Tune; identity entities + groups; MFA (TOTP methods + login enforcements) |
-| **5** ◑ | Engines | C | Type-dispatched engine dashboards: **Transit** (keys + encrypt/decrypt/rotate) and **PKI** (issuers/root, roles, issue cert) done. Remaining: SSH, Database |
+| **5** ✅ | Engines | C | Type-dispatched engine dashboards: **Transit** (encrypt/decrypt/rotate), **PKI** (root/roles/issue), **SSH** (CA/roles/sign), **Database** (connections/roles/generate creds) |
 | **6** | Operations | H | Init/seal/unseal, rekey/rotate, raft + snapshots, audit devices + log viewer, quotas, plugins |
 | **7** | Differentiators | — | Cross-env **comparison matrix**, audit-log store/streaming, secret-sync/integrations, PR-style change & access requests |
 

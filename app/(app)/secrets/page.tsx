@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useMounts } from "@/lib/kv";
 
 // engines with a dedicated dashboard (clickable)
-const SUPPORTED = new Set(["kv", "generic", "transit", "pki"]);
+const SUPPORTED = new Set(["kv", "generic", "transit", "pki", "ssh", "database"]);
 
 function engineMeta(type: string) {
   switch (type) {
@@ -19,6 +19,8 @@ function engineMeta(type: string) {
       return { icon: ScrollText, blurb: "Certificate authority" };
     case "ssh":
       return { icon: Terminal, blurb: "SSH certificates" };
+    case "database":
+      return { icon: Database, blurb: "Dynamic database credentials" };
     default:
       return { icon: Database, blurb: "—" };
   }

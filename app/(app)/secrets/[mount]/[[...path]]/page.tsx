@@ -3,7 +3,9 @@
 import { useParams } from "next/navigation";
 
 import { KvBrowser } from "@/components/kv/kv-browser";
+import { DatabaseDashboard } from "@/components/engines/database-dashboard";
 import { PkiDashboard } from "@/components/engines/pki-dashboard";
+import { SshDashboard } from "@/components/engines/ssh-dashboard";
 import { TransitDashboard } from "@/components/engines/transit-dashboard";
 import { useMounts } from "@/lib/kv";
 
@@ -28,6 +30,8 @@ export default function MountPage() {
 
   if (type === "transit") return <div className="h-dvh"><TransitDashboard mount={mount} /></div>;
   if (type === "pki") return <div className="h-dvh"><PkiDashboard mount={mount} /></div>;
+  if (type === "ssh") return <div className="h-dvh"><SshDashboard mount={mount} /></div>;
+  if (type === "database") return <div className="h-dvh"><DatabaseDashboard mount={mount} /></div>;
 
   return (
     <div className="flex h-dvh items-center justify-center p-8 text-center text-sm text-muted-foreground">
