@@ -241,6 +241,88 @@ export function useSetAuthTune(path: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Generic config + roles (jwt/oidc/kubernetes/cert ...)
+// ---------------------------------------------------------------------------
+
+export function useAuthConfig(mount: string) {
+  const { namespace } = useNamespace();
+  return useQuery({
+    queryKey: ["auth-config", namespace, m(mount)],
+    queryFn: async (): Promise<Record<string, unknown> | null> => {
+      try {
+        const res = await baoFetch<{ data: Record<string, unknown> }>({
+          path: `auth/${m(mount)}/config`,
+          namespace,
+        });
+        return res.data;
+      } catch {
+        return null; // not configured yet
+      }
+    },
+  });
+}
+
+export function useSetAuthConfig(mount: string) {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  return useMutation({
+    meta: { success: "Configuration saved", silentError: true },
+    mutationFn: async (cfg: Record<string, unknown>) =>
+      baoFetch({ path: `auth/${m(mount)}/config`, method: "POST", namespace, body: cfg }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["auth-config", namespace, m(mount)] }),
+  });
+}
+
+export function useAuthRoles(mount: string, base: string) {
+  const { namespace } = useNamespace();
+  return useQuery({
+    queryKey: ["auth-roles", namespace, m(mount), base],
+    queryFn: async () => {
+      try {
+        const res = await baoFetch<{ data: { keys: string[] } }>({
+          path: `auth/${m(mount)}/${base}`,
+          namespace,
+          list: true,
+        });
+        return res.data?.keys ?? [];
+      } catch {
+        return [] as string[];
+      }
+    },
+  });
+}
+
+export function useCreateAuthRole(mount: string, base: string) {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  return useMutation({
+    meta: { success: "Saved", silentError: true },
+    mutationFn: async (vars: { name: string; body: Record<string, unknown> }) =>
+      baoFetch({
+        path: `auth/${m(mount)}/${base}/${vars.name}`,
+        method: "POST",
+        namespace,
+        body: vars.body,
+      }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["auth-roles", namespace, m(mount), base] }),
+  });
+}
+
+export function useDeleteAuthRole(mount: string, base: string) {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  return useMutation({
+    meta: { success: "Deleted" },
+    mutationFn: async (name: string) =>
+      baoFetch({ path: `auth/${m(mount)}/${base}/${name}`, method: "DELETE", namespace }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["auth-roles", namespace, m(mount), base] }),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // LDAP connection config (a common method)
 // ---------------------------------------------------------------------------
 

@@ -184,7 +184,7 @@ Each domain lists **coverage** (primary `/v1/` paths), the **UX** approach, and
 | **1** ✅ | Foundation depth | A | Namespace switcher, BFF proxy, login methods (token/userpass/LDAP/AppRole/OIDC), capability-aware nav, ⌘K palette, dark mode, session/TTL bar + renew |
 | **2** ✅ | **KV hero** | B | KV v2 browse/CRUD, versions + rollback, masked values, soft-delete/destroy, create dialog, cubbyhole-ready |
 | **3** ✅ | Authz core | F, G | ACL HCL editor, capabilities tester, token create/list/revoke, lease browser |
-| **4** ◑ | Access mgmt | D, E | Auth methods enable/disable + userpass/AppRole/LDAP config, per-method Tune (TTLs/description), identity entities + groups. Remaining: per-method config for oidc/k8s/cert, MFA |
+| **4** ✅ | Access mgmt | D, E | Auth methods enable/disable + per-method config (userpass/AppRole/LDAP bespoke; jwt/oidc/kubernetes/cert via a generic field-spec engine) + Tune; identity entities + groups; MFA (TOTP methods + login enforcements) |
 | **5** | Engines | C | Transit → PKI → SSH → Database dashboards + mount wizard |
 | **6** | Operations | H | Init/seal/unseal, rekey/rotate, raft + snapshots, audit devices + log viewer, quotas, plugins |
 | **7** | Differentiators | — | Cross-env **comparison matrix**, audit-log store/streaming, secret-sync/integrations, PR-style change & access requests |

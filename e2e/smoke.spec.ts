@@ -81,5 +81,10 @@ test("access management: auth methods and identity", async ({ page }) => {
   await page.goto("/ui/access/identity");
   await expect(page.getByRole("tab", { name: "Entities" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Groups" })).toBeVisible();
+
+  // MFA tab shows TOTP methods + login enforcements
+  await page.goto("/ui/access/mfa");
+  await expect(page.getByRole("heading", { name: "TOTP methods" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Login enforcements" })).toBeVisible();
 });
 

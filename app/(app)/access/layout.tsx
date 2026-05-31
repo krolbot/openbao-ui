@@ -21,6 +21,7 @@ export default function AccessLayout({
     { href: "/access", label: "Policies", show: can("sys/policies/acl") },
     { href: "/access/auth", label: "Auth Methods", show: can("sys/auth") },
     { href: "/access/identity", label: "Identity", show: can("identity/entity/id") },
+    { href: "/access/mfa", label: "MFA", show: can("identity/mfa/method/totp") },
     { href: "/access/capabilities", label: "Capabilities", show: true },
     { href: "/access/tokens", label: "Tokens", show: can("auth/token/accessors") },
     { href: "/access/leases", label: "Leases", show: can("sys/leases/lookup") },

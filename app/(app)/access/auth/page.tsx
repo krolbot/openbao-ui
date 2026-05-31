@@ -15,16 +15,21 @@ import {
   AuthMount,
   useApproleRoleId,
   useApproleRoles,
+  useAuthConfig,
   useAuthMethods,
+  useAuthRoles,
   useAuthTune,
   useCreateApproleRole,
+  useCreateAuthRole,
   useCreateUserpassUser,
   useDeleteApproleRole,
+  useDeleteAuthRole,
   useDeleteUserpassUser,
   useDisableAuth,
   useEnableAuth,
   useGenerateSecretId,
   useLdapConfig,
+  useSetAuthConfig,
   useSetAuthTune,
   useSetLdapConfig,
   useUserpassUsers,
@@ -148,6 +153,8 @@ function MethodConfig({ method }: { method: AuthMount }) {
         <ApproleConfig mount={method.path} />
       ) : method.type === "ldap" ? (
         <LdapConfigPane mount={method.path} />
+      ) : FIELD_SPECS[method.type] ? (
+        <GenericConfig mount={method.path} spec={FIELD_SPECS[method.type]} />
       ) : (
         <p className="text-sm text-muted-foreground">
           A dedicated configuration UI for <span className="font-mono">{method.type}</span> is on the
@@ -536,6 +543,274 @@ function EnableDialog({
         </div>
       </form>
     </Dialog>
+  );
+}
+
+// --- generic config + roles, driven by per-type field specs ---
+
+type FieldSpec = {
+  key: string;
+  label: string;
+  kind?: "text" | "password" | "textarea" | "list";
+  placeholder?: string;
+};
+
+type MethodSpec = {
+  config: FieldSpec[];
+  roles?: { base: string; label: string; addLabel: string; fields: FieldSpec[] };
+};
+
+const ROLE = {
+  base: "role",
+  label: "Roles",
+  addLabel: "Add role",
+};
+
+const FIELD_SPECS: Record<string, MethodSpec> = {
+  jwt: {
+    config: [
+      { key: "oidc_discovery_url", label: "OIDC discovery URL", placeholder: "https://issuer.example.com" },
+      { key: "jwks_url", label: "JWKS URL" },
+      { key: "bound_issuer", label: "Bound issuer" },
+      { key: "oidc_client_id", label: "OIDC client ID" },
+      { key: "oidc_client_secret", label: "OIDC client secret", kind: "password" },
+      { key: "default_role", label: "Default role" },
+    ],
+    roles: {
+      ...ROLE,
+      fields: [
+        { key: "token_policies", label: "Token policies", kind: "list", placeholder: "default" },
+        { key: "user_claim", label: "User claim", placeholder: "sub" },
+        { key: "bound_audiences", label: "Bound audiences", kind: "list" },
+        { key: "allowed_redirect_uris", label: "Allowed redirect URIs", kind: "list" },
+        { key: "role_type", label: "Role type", placeholder: "oidc or jwt" },
+      ],
+    },
+  },
+  kubernetes: {
+    config: [
+      { key: "kubernetes_host", label: "Kubernetes host", placeholder: "https://kubernetes.default.svc" },
+      { key: "kubernetes_ca_cert", label: "CA certificate (PEM)", kind: "textarea" },
+      { key: "token_reviewer_jwt", label: "Token reviewer JWT", kind: "textarea" },
+    ],
+    roles: {
+      ...ROLE,
+      fields: [
+        { key: "bound_service_account_names", label: "Service account names", kind: "list", placeholder: "vault-auth" },
+        { key: "bound_service_account_namespaces", label: "Namespaces", kind: "list", placeholder: "default" },
+        { key: "token_policies", label: "Token policies", kind: "list", placeholder: "default" },
+      ],
+    },
+  },
+  cert: {
+    config: [],
+    roles: {
+      base: "certs",
+      label: "Trusted certificates",
+      addLabel: "Add certificate",
+      fields: [
+        { key: "certificate", label: "Certificate (PEM)", kind: "textarea" },
+        { key: "token_policies", label: "Token policies", kind: "list", placeholder: "default" },
+        { key: "allowed_common_names", label: "Allowed common names", kind: "list" },
+      ],
+    },
+  },
+};
+FIELD_SPECS.oidc = FIELD_SPECS.jwt;
+
+function buildBody(fields: FieldSpec[], vals: Record<string, string>) {
+  const body: Record<string, unknown> = {};
+  for (const f of fields) {
+    const raw = vals[f.key];
+    if (raw == null || raw === "") continue;
+    body[f.key] =
+      f.kind === "list"
+        ? raw.split(",").map((s) => s.trim()).filter(Boolean)
+        : raw;
+  }
+  return body;
+}
+
+function DynField({
+  field,
+  value,
+  onChange,
+}: {
+  field: FieldSpec;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <Field label={field.label}>
+      {field.kind === "textarea" ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          spellCheck={false}
+          className="h-24 w-full rounded-md border bg-transparent p-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      ) : (
+        <Input
+          type={field.kind === "password" ? "password" : "text"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          className={field.kind === "list" ? "font-mono" : undefined}
+        />
+      )}
+    </Field>
+  );
+}
+
+function GenericConfig({ mount, spec }: { mount: string; spec: MethodSpec }) {
+  return (
+    <div className="flex flex-col gap-5">
+      {spec.config.length ? <ConfigFields mount={mount} fields={spec.config} /> : null}
+      {spec.roles ? <RolesPanel mount={mount} spec={spec.roles} /> : null}
+    </div>
+  );
+}
+
+function ConfigFields({ mount, fields }: { mount: string; fields: FieldSpec[] }) {
+  const cfg = useAuthConfig(mount);
+  const save = useSetAuthConfig(mount);
+  const [vals, setVals] = React.useState<Record<string, string>>({});
+  const [error, setError] = React.useState<string | null>(null);
+  const [saved, setSaved] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!cfg.data) return;
+    const init: Record<string, string> = {};
+    for (const f of fields) {
+      const v = cfg.data[f.key];
+      if (v != null && f.kind !== "password") {
+        init[f.key] = Array.isArray(v) ? v.join(", ") : String(v);
+      }
+    }
+    setVals(init);
+  }, [cfg.data, fields]);
+
+  return (
+    <div>
+      <h3 className="mb-3 text-sm font-medium">Configuration</h3>
+      <form
+        className="flex flex-col gap-3"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setError(null);
+          setSaved(false);
+          try {
+            await save.mutateAsync(buildBody(fields, vals));
+            setSaved(true);
+          } catch (err) {
+            setError(errMsg(err));
+          }
+        }}
+      >
+        {fields.map((f) => (
+          <DynField
+            key={f.key}
+            field={f}
+            value={vals[f.key] ?? ""}
+            onChange={(v) => setVals((s) => ({ ...s, [f.key]: v }))}
+          />
+        ))}
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <div className="flex items-center gap-3">
+          <Button type="submit" size="sm" disabled={save.isPending}>
+            {save.isPending ? "Saving…" : "Save configuration"}
+          </Button>
+          {saved ? <span className="text-xs text-emerald-600">Saved</span> : null}
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function RolesPanel({
+  mount,
+  spec,
+}: {
+  mount: string;
+  spec: NonNullable<MethodSpec["roles"]>;
+}) {
+  const roles = useAuthRoles(mount, spec.base);
+  const create = useCreateAuthRole(mount, spec.base);
+  const del = useDeleteAuthRole(mount, spec.base);
+  const [open, setOpen] = React.useState(false);
+  const [name, setName] = React.useState("");
+  const [vals, setVals] = React.useState<Record<string, string>>({});
+  const [error, setError] = React.useState<string | null>(null);
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-medium">{spec.label}</h3>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setName("");
+            setVals({});
+            setError(null);
+            setOpen(true);
+          }}
+        >
+          <Plus /> {spec.addLabel}
+        </Button>
+      </div>
+      <ul className="divide-y rounded-md border">
+        {(roles.data ?? []).map((r) => (
+          <li key={r} className="flex items-center justify-between px-3 py-2 text-sm">
+            <span className="font-mono">{r}</span>
+            <Button variant="ghost" size="icon" title="Delete" onClick={() => del.mutate(r)}>
+              <Trash2 />
+            </Button>
+          </li>
+        ))}
+        {roles.data?.length === 0 ? (
+          <li className="px-3 py-6 text-center text-sm text-muted-foreground">None yet.</li>
+        ) : null}
+      </ul>
+
+      {open ? (
+        <Dialog open onClose={() => setOpen(false)} className="max-w-lg">
+          <DialogHeader title={spec.addLabel} onClose={() => setOpen(false)} />
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setError(null);
+              if (!name.trim()) return setError("Name is required");
+              try {
+                await create.mutateAsync({ name: name.trim(), body: buildBody(spec.fields, vals) });
+                setOpen(false);
+              } catch (err) {
+                setError(errMsg(err));
+              }
+            }}
+          >
+            <Field label="Name">
+              <Input value={name} onChange={(e) => setName(e.target.value)} className="font-mono" autoFocus />
+            </Field>
+            {spec.fields.map((f) => (
+              <DynField
+                key={f.key}
+                field={f}
+                value={vals[f.key] ?? ""}
+                onChange={(v) => setVals((s) => ({ ...s, [f.key]: v }))}
+              />
+            ))}
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={create.isPending}>Save</Button>
+            </div>
+          </form>
+        </Dialog>
+      ) : null}
+    </div>
   );
 }
 
