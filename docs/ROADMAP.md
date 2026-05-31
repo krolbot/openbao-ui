@@ -187,7 +187,7 @@ Each domain lists **coverage** (primary `/v1/` paths), the **UX** approach, and
 | **4** ✅ | Access mgmt | D, E | Auth methods enable/disable + per-method config (userpass/AppRole/LDAP bespoke; jwt/oidc/kubernetes/cert via a generic field-spec engine) + Tune; identity entities + groups; MFA (TOTP methods + login enforcements) |
 | **5** ✅ | Engines | C | Type-dispatched engine dashboards: **Transit** (encrypt/decrypt/rotate), **PKI** (root/roles/issue), **SSH** (CA/roles/sign), **Database** (connections/roles/generate creds) |
 | **6** ✅ | Operations | H | Bootstrap (init wizard → unseal flow, pre-login), status dashboard (seal/HA/leader/key-term/storage), rotate key + seal, audit listing (read-only; OpenBao manages declaratively), rate-limit quotas, plugin catalog. Deferred (advanced/infra-dependent): rekey/generate-root, raft snapshots (need raft storage), audit-log viewer (→ Phase 7) |
-| **7** | Differentiators | — | Cross-env **comparison matrix**, audit-log store/streaming, secret-sync/integrations, PR-style change & access requests |
+| **7** ◑ | Differentiators | — | Cross-engine **comparison matrix** done (set/missing/differs across KV mounts). Remaining: audit-log viewer (needs a file audit device + log reader), PR-style approval workflows (need a stateful control plane), secret-sync/integrations |
 
 ---
 

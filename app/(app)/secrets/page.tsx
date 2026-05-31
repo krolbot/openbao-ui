@@ -1,8 +1,9 @@
 "use client";
 
-import { Database, KeyRound, Lock, ScrollText, Terminal } from "lucide-react";
+import { Database, GitCompare, KeyRound, Lock, ScrollText, Terminal } from "lucide-react";
 import Link from "next/link";
 
+import { Button } from "@/components/ui/button";
 import { useMounts } from "@/lib/kv";
 
 // engines with a dedicated dashboard (clickable)
@@ -31,11 +32,18 @@ export default function SecretsPage() {
 
   return (
     <div className="mx-auto max-w-5xl p-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Secrets</h1>
-        <p className="text-muted-foreground">
-          Secret engines mounted in this namespace.
-        </p>
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Secrets</h1>
+          <p className="text-muted-foreground">
+            Secret engines mounted in this namespace.
+          </p>
+        </div>
+        <Link href="/secrets/compare">
+          <Button variant="outline" size="sm">
+            <GitCompare /> Compare
+          </Button>
+        </Link>
       </header>
 
       {isLoading ? (

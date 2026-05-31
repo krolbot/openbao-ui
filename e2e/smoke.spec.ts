@@ -22,6 +22,11 @@ test("login and browse the KV engine", async ({ page }) => {
 
   // the KV browser renders (breadcrumb shows the mount)
   await expect(page.getByRole("link", { name: "secret", exact: true })).toBeVisible();
+
+  // comparison matrix page is reachable and renders
+  await page.goto("/ui/secrets/compare");
+  await expect(page.getByRole("heading", { name: "Compare environments" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Compare" })).toBeVisible();
 });
 
 test("access section: policies, capabilities, tokens", async ({ page }) => {
