@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { isCrossSiteRequest } from "@/lib/csrf";
 import { OPENBAO_ADDR } from "@/lib/openbao";
 import { getToken } from "@/lib/session";
 
@@ -24,7 +25,17 @@ async function handle(
     return NextResponse.json({ errors: ["not authenticated"] }, { status: 401 });
   }
 
+  // CSRF defense-in-depth on state-changing methods.
+  if (req.method !== "GET" && req.method !== "HEAD" && isCrossSiteRequest(req)) {
+    return NextResponse.json({ errors: ["cross-site request blocked"] }, { status: 403 });
+  }
+
   const { path } = await ctx.params;
+  // Keep the proxy strictly scoped under /v1/ — reject traversal segments
+  // (encodeURIComponent does not encode "." so ".." would otherwise escape).
+  if (path.some((seg) => seg === "." || seg === "..")) {
+    return NextResponse.json({ errors: ["invalid path"] }, { status: 400 });
+  }
   const search = req.nextUrl.search; // preserves ?list=true, ?version=N, etc.
   const url = `${OPENBAO_ADDR}/v1/${path.map(encodeURIComponent).join("/")}${search}`;
 

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
+import { isCrossSiteRequest } from "@/lib/csrf";
 import { openbao, OpenBaoRequestError } from "@/lib/openbao";
 
 /**
@@ -12,6 +13,9 @@ import { openbao, OpenBaoRequestError } from "@/lib/openbao";
  * callback registered as an allowed redirect URI.
  */
 export async function POST(req: NextRequest) {
+  if (isCrossSiteRequest(req)) {
+    return NextResponse.json({ error: "cross-site request blocked" }, { status: 403 });
+  }
   let body: { mount?: string; role?: string };
   try {
     body = await req.json();

@@ -35,6 +35,22 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async headers() {
+    // Security headers for a secrets UI: no framing (clickjacking), no MIME
+    // sniffing, and no referrer leakage of paths to third parties.
+    return [
+      {
+        source: "/:path*",
+        basePath: false,
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

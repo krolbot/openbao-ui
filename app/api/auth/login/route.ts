@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { isCrossSiteRequest } from "@/lib/csrf";
 import { openbao, OpenBaoRequestError } from "@/lib/openbao";
 import { setToken } from "@/lib/session";
 
@@ -16,6 +17,9 @@ type LoginBody =
  * token in an httpOnly cookie. The raw token never reaches client JS.
  */
 export async function POST(req: Request) {
+  if (isCrossSiteRequest(req)) {
+    return NextResponse.json({ error: "cross-site request blocked" }, { status: 403 });
+  }
   let body: LoginBody;
   try {
     body = (await req.json()) as LoginBody;
