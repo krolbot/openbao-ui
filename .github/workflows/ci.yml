@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    name: Lint & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  e2e:
+    name: E2E (Playwright vs real OpenBao)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Real OpenBao in dev mode (root token "root") for the smoke suite.
+      - name: Start OpenBao
+        run: |
+          docker run -d --name openbao -p 8200:8200 \
+            -e BAO_DEV_ROOT_TOKEN_ID=root \
+            -e BAO_DEV_LISTEN_ADDRESS=0.0.0.0:8200 \
+            quay.io/openbao/openbao:latest server -dev
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8200/v1/sys/seal-status >/dev/null && break
+            sleep 1
+          done
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+
+      - run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      # Run the standalone server (same artifact the Docker image runs).
+      - name: Start app
+        env:
+          OPENBAO_ADDR: http://localhost:8200
+          PORT: "3000"
+          HOSTNAME: 0.0.0.0
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          node .next/standalone/server.js &
+          for i in $(seq 1 30); do
+            [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/ui/login)" = "200" ] && break
+            sleep 1
+          done
+
+      - name: Run smoke tests
+        env:
+          E2E_BASE_URL: http://localhost:3000
+          E2E_TOKEN: root
+        run: pnpm e2e
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
