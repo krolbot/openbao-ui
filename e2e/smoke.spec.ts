@@ -105,5 +105,9 @@ test("operations: status, quotas, plugins", async ({ page }) => {
 
   await page.getByRole("link", { name: "Plugins" }).click();
   await expect(page.getByRole("heading", { name: "auth" })).toBeVisible();
+
+  // audit-log viewer renders (Recent activity section)
+  await page.getByRole("link", { name: "Audit" }).click();
+  await expect(page.getByRole("heading", { name: "Recent activity" })).toBeVisible();
 });
 

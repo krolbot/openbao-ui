@@ -20,3 +20,13 @@ listener "tcp" {
 
 # Disable mlock for container portability; review for hardened deployments.
 disable_mlock = true
+
+# Declarative file audit device. OpenBao disables enabling audit devices over
+# the API, so they are configured here; the UI's audit-log viewer reads this
+# file. The device attaches once the instance is unsealed.
+audit "file" "file" {
+  options {
+    file_path = "/bao/file/audit.log"
+  }
+}
+
