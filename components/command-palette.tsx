@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   KeyRound,
   LayoutDashboard,
   Moon,
@@ -68,6 +69,10 @@ export function CommandPalette() {
       { id: "capabilities", label: "Access · Capabilities", icon: <Shield />, run: go("/access/capabilities") },
       { id: "tokens", label: "Access · Tokens", icon: <Shield />, run: go("/access/tokens") },
       { id: "leases", label: "Access · Leases", icon: <Shield />, run: go("/access/leases") },
+      { id: "ops-status", label: "Operations · Status", icon: <Activity />, run: go("/operations") },
+      { id: "ops-audit", label: "Operations · Audit", icon: <Activity />, run: go("/operations/audit") },
+      { id: "ops-quotas", label: "Operations · Quotas", icon: <Activity />, run: go("/operations/quotas") },
+      { id: "ops-plugins", label: "Operations · Plugins", icon: <Activity />, run: go("/operations/plugins") },
       { id: "theme", label: "Toggle dark mode", icon: <Moon />, run: () => { toggle(); setOpen(false); } },
     ];
     const kvMounts = Object.keys(mounts ?? {}).map((path) => {

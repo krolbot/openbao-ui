@@ -88,3 +88,17 @@ test("access management: auth methods and identity", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Login enforcements" })).toBeVisible();
 });
 
+test("operations: status, quotas, plugins", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Operations" }).click();
+  await expect(page.getByText("Seal status")).toBeVisible();
+  await expect(page.getByText("Maintenance")).toBeVisible();
+
+  await page.getByRole("link", { name: "Plugins" }).click();
+  await expect(page.getByRole("heading", { name: "auth" })).toBeVisible();
+});
+
