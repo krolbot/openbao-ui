@@ -1,11 +1,28 @@
 "use client";
 
-import { Database, KeyRound } from "lucide-react";
+import { Database, KeyRound, Lock, ScrollText, Terminal } from "lucide-react";
 import Link from "next/link";
 
 import { useMounts } from "@/lib/kv";
 
-const isKv = (type: string) => type === "kv" || type === "generic";
+// engines with a dedicated dashboard (clickable)
+const SUPPORTED = new Set(["kv", "generic", "transit", "pki"]);
+
+function engineMeta(type: string) {
+  switch (type) {
+    case "kv":
+    case "generic":
+      return { icon: KeyRound, blurb: "Key/value secrets" };
+    case "transit":
+      return { icon: Lock, blurb: "Encryption as a service" };
+    case "pki":
+      return { icon: ScrollText, blurb: "Certificate authority" };
+    case "ssh":
+      return { icon: Terminal, blurb: "SSH certificates" };
+    default:
+      return { icon: Database, blurb: "—" };
+  }
+}
 
 export default function SecretsPage() {
   const { data: mounts, isLoading, isError } = useMounts();
@@ -29,16 +46,13 @@ export default function SecretsPage() {
         <ul className="grid gap-3 sm:grid-cols-2">
           {Object.entries(mounts ?? {}).map(([path, info]) => {
             const name = path.replace(/\/$/, "");
-            const kv = isKv(info.type);
+            const supported = SUPPORTED.has(info.type);
+            const { icon: Icon, blurb } = engineMeta(info.type);
             const version = info.options?.version;
             const inner = (
               <div className="flex items-start gap-3 rounded-xl border p-4 transition-colors group-hover:bg-accent">
                 <div className="flex size-9 items-center justify-center rounded-md bg-secondary">
-                  {kv ? (
-                    <KeyRound className="size-4" />
-                  ) : (
-                    <Database className="size-4" />
-                  )}
+                  <Icon className="size-4" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -49,9 +63,9 @@ export default function SecretsPage() {
                     </span>
                   </div>
                   <p className="truncate text-sm text-muted-foreground">
-                    {info.description || (kv ? "Key/value secrets" : "—")}
+                    {info.description || blurb}
                   </p>
-                  {!kv ? (
+                  {!supported ? (
                     <span className="text-xs text-muted-foreground/70">
                       UI coming soon
                     </span>
@@ -61,7 +75,7 @@ export default function SecretsPage() {
             );
             return (
               <li key={path}>
-                {kv ? (
+                {supported ? (
                   <Link href={`/secrets/${name}`} className="group block">
                     {inner}
                   </Link>
