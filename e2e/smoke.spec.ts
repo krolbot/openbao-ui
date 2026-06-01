@@ -195,6 +195,33 @@ test("settings: profile, preferences, namespaces", async ({ page }) => {
   await expect(page.getByRole("button", { name: "New policy" })).toBeVisible();
 });
 
+test("team: create a role and assign it to a member", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  // create a member entity via Identity
+  const member = `alice-${Date.now()}`;
+  await page.goto("/ui/access/identity");
+  await page.getByRole("button", { name: "New entity" }).click();
+  await page.getByRole("dialog").getByRole("textbox").first().fill(member);
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+
+  // Team: materialize the "viewer" role, then assign it to the member
+  await page.goto("/ui/access/team");
+  const viewerCard = page.locator("li").filter({ hasText: "viewer" });
+  await viewerCard.getByRole("button", { name: "Create role" }).click();
+  await expect(viewerCard.getByText("Created")).toBeVisible();
+
+  await page.getByRole("button", { name: member }).click();
+  await expect(page.getByText("No roles assigned.")).toBeVisible();
+  await page.locator("select").selectOption({ label: "viewer" });
+
+  // the role badge + its remove control appear
+  await expect(page.getByRole("button", { name: "Remove viewer" })).toBeVisible();
+});
+
 test("auth: Google sign-in wizard renders", async ({ page }) => {
   await page.goto("/");
   await page.fill("#token", TOKEN);

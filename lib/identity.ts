@@ -152,3 +152,61 @@ export function useDeleteGroup() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["groups", namespace] }),
   });
 }
+
+/**
+ * Groups with their full details (member lists + policies). Used by the Team
+ * view to compute which roles each member holds. Capped for safety.
+ */
+export function useGroupsDetailed() {
+  const { namespace } = useNamespace();
+  return useQuery({
+    queryKey: ["groups-detailed", namespace],
+    queryFn: async (): Promise<Group[]> => {
+      let ids: string[] = [];
+      try {
+        const res = await baoFetch<ListWithInfo>({
+          path: "identity/group/id",
+          namespace,
+          list: true,
+        });
+        ids = res.data?.keys ?? [];
+      } catch {
+        return [];
+      }
+      const groups = await Promise.all(
+        ids.slice(0, 200).map(async (id) => {
+          try {
+            const r = await baoFetch<{ data: Group }>({
+              path: `identity/group/id/${id}`,
+              namespace,
+            });
+            return r.data;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      return groups.filter((g): g is Group => !!g);
+    },
+  });
+}
+
+/** Replace a group's member entity list (how the Team view (un)assigns roles). */
+export function useSetGroupMembers() {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  return useMutation({
+    meta: { success: "Role updated", silentError: true },
+    mutationFn: async (vars: { id: string; member_entity_ids: string[] }) =>
+      baoFetch({
+        path: `identity/group/id/${vars.id}`,
+        method: "POST",
+        namespace,
+        body: { member_entity_ids: vars.member_entity_ids },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["groups-detailed", namespace] });
+      qc.invalidateQueries({ queryKey: ["groups", namespace] });
+    },
+  });
+}
