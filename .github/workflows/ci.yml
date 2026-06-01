@@ -28,14 +28,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
 
-      # Build and run the real single image (OpenBao + Next.js BFF) — the same
-      # artifact shipped to users — and drive it with Playwright.
-      - name: Build image
-        run: docker build -t openbao-ui:ci .
+      - name: Build app
+        run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
 
-      - name: Start container (dev mode)
+      # Assemble the standalone output + run it (with OpenBao) as the single
+      # runtime image — same artifact behavior as the shipped image, but built
+      # from the host-built app so CI never does an in-container install.
+      - name: Build & start container
         run: |
+          mkdir -p ci-ctx/app
+          cp -r .next/standalone/. ci-ctx/app/
+          mkdir -p ci-ctx/app/.next && cp -r .next/static ci-ctx/app/.next/static
+          cp -r public ci-ctx/app/public
+          cp docker/entrypoint.sh docker/openbao.hcl ci-ctx/
+          docker build -f docker/Dockerfile.runtime -t openbao-ui:ci ci-ctx
           docker run -d --name openbao-ui --init -p 3000:3000 \
             -e BAO_DEV=1 -e BAO_DEV_ROOT_TOKEN_ID=root openbao-ui:ci
           ok=""
@@ -45,16 +60,8 @@ jobs:
             fi
             sleep 1
           done
-          if [ -z "$ok" ]; then
-            echo "::error::app did not become ready"; docker logs openbao-ui; exit 1
-          fi
+          if [ -z "$ok" ]; then echo "::error::app not ready"; docker logs openbao-ui; exit 1; fi
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
 
       - name: Run smoke tests
