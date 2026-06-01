@@ -1,0 +1,80 @@
+name: Publish image
+
+# Builds the single OpenBao + UI image and publishes it to GitHub Packages
+# (GitHub Container Registry, ghcr.io) on every push to main and on version
+# tags. PR validation (lint/test/e2e) lives in ci.yml.
+#
+# The app is built on the runner and packaged via docker/Dockerfile.runtime —
+# the exact artifact path CI's e2e job exercises — so we ship what we test
+# (and avoid an in-container `pnpm install`).
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }} # -> ghcr.io/hasdfa/openbao-ui
+
+jobs:
+  publish:
+    name: Build & push (ghcr.io)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # required to push to GHCR
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - name: Build app
+        run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Assemble runtime build context
+        run: |
+          mkdir -p ci-ctx/app
+          cp -r .next/standalone/. ci-ctx/app/
+          mkdir -p ci-ctx/app/.next && cp -r .next/static ci-ctx/app/.next/static
+          cp -r public ci-ctx/app/public
+          cp docker/entrypoint.sh docker/openbao.hcl ci-ctx/
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tags & labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: ci-ctx
+          file: docker/Dockerfile.runtime
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

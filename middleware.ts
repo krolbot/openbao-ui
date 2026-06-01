@@ -5,6 +5,12 @@ const COOKIE_NAME = process.env.BAO_COOKIE_NAME ?? "bao_token";
 /**
  * Gate authenticated app pages. Unauthenticated requests to /ui/* are
  * redirected to /ui/login. The login page and the auth BFF routes stay open.
+ *
+ * NOTE: this only governs the app's basePath (/ui). The `/v1/*` proxy lives
+ * outside basePath (next.config rewrite with basePath:false), so middleware
+ * never runs on it — the unauthenticated bootstrap/discovery calls the login
+ * and seal flows make (sys/seal-status, sys/init, sys/unseal,
+ * sys/internal/ui/mounts) reach OpenBao directly, by design.
  */
 export function middleware(req: NextRequest) {
   // Normalize away the basePath so the allow-list works regardless of whether
