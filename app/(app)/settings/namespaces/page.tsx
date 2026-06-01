@@ -1,14 +1,16 @@
 "use client";
 
-import { Layers, Plus, Trash2 } from "lucide-react";
+import { Layers, Pencil, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { colorDot, LabelEditor } from "@/components/label-editor";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BaoError } from "@/lib/bao-client";
+import { labelKey, useLabels } from "@/lib/labels";
 import { useNamespace } from "@/lib/namespace";
 import {
   useCreateNamespace,
@@ -24,16 +26,19 @@ export default function NamespacesPage() {
   const create = useCreateNamespace();
   const del = useDeleteNamespace();
   const { namespace, setNamespace } = useNamespace();
+  // workspace (namespace) labels live globally under the root namespace
+  const { data: wsLabels } = useLabels("");
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [removing, setRemoving] = React.useState<string | null>(null);
+  const [editing, setEditing] = React.useState<string | null>(null);
 
   return (
     <div className="mx-auto max-w-3xl p-8">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Child namespaces of <span className="font-mono text-foreground">{namespace || "root"}</span>.
+          Workspaces (child namespaces) of <span className="font-mono text-foreground">{namespace || "root"}</span>.
           Each is an isolated tenant with its own mounts, policies, and identities.
         </p>
         <Button size="sm" onClick={() => { setName(""); setError(null); setOpen(true); }}>
@@ -47,10 +52,23 @@ export default function NamespacesPage() {
         <ul className="divide-y rounded-md border">
           {(list.data ?? []).map((ns) => {
             const full = [namespace, ns.path.replace(/\/$/, "")].filter(Boolean).join("/");
+            const lbl = wsLabels?.[labelKey("workspace", full)];
             return (
               <li key={ns.path} className="flex items-center gap-3 px-3 py-2 text-sm">
-                <Layers className="size-4 text-muted-foreground" />
-                <span className="flex-1 font-mono">{ns.path}</span>
+                {lbl?.color ? (
+                  <span className={`size-2.5 shrink-0 rounded-full ${colorDot(lbl.color)}`} />
+                ) : (
+                  <Layers className="size-4 text-muted-foreground" />
+                )}
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate">{lbl?.label || ns.path}</span>
+                  {lbl?.label ? (
+                    <span className="truncate font-mono text-xs text-muted-foreground">{ns.path}</span>
+                  ) : null}
+                </span>
+                <Button variant="ghost" size="icon" title="Customize display" aria-label={`Customize ${ns.path}`} onClick={() => setEditing(full)}>
+                  <Pencil />
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => setNamespace(full)}>
                   Switch
                 </Button>
@@ -111,6 +129,18 @@ export default function NamespacesPage() {
         confirmLabel="Delete namespace"
         pending={del.isPending}
       />
+
+      {editing ? (
+        <LabelEditor
+          open
+          onClose={() => setEditing(null)}
+          scope="workspace"
+          refPath={editing}
+          current={wsLabels?.[labelKey("workspace", editing)]}
+          ns=""
+          nativeName={editing}
+        />
+      ) : null}
     </div>
   );
 }

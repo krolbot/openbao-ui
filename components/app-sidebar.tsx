@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, KeyRound, LayoutDashboard, Settings, Users } from "lucide-react";
+import { Activity, BookOpen, KeyRound, LayoutDashboard, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -24,6 +24,7 @@ export function AppSidebar({ displayName }: { displayName: string }) {
   const nav = [
     { href: "/", label: "Overview", icon: LayoutDashboard, show: true },
     { href: "/secrets", label: "Secrets", icon: KeyRound, show: can("sys/mounts") },
+    { href: "/guides", label: "Guides", icon: BookOpen, show: can("sys/mounts") },
     { href: accessHref, label: "Access", icon: Users, show: true },
     { href: "/operations", label: "Operations", icon: Activity, show: can("sys/audit") },
     { href: "/settings", label: "Settings", icon: Settings, show: true },

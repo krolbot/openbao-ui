@@ -52,7 +52,7 @@ export function DialogHeader({
   onClose,
 }: {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   onClose?: () => void;
 }) {
   return (

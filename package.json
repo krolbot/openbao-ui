@@ -4,7 +4,7 @@
   "private": true,
   "description": "A modern, simple UI for OpenBao — Next.js BFF embedded alongside OpenBao in a single image.",
   "scripts": {
-    "dev": "next dev",
+    "dev": "UI_DB_PATH=.data/ui.db next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

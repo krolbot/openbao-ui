@@ -27,12 +27,14 @@ type RequestOptions = {
   method?: string;
   token?: string;
   body?: unknown;
+  namespace?: string;
 };
 
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
-  const { method = "GET", token, body } = opts;
+  const { method = "GET", token, body, namespace } = opts;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers["X-Vault-Token"] = token;
+  if (namespace) headers["X-Vault-Namespace"] = namespace;
 
   const res = await fetch(`${OPENBAO_ADDR}/v1/${path.replace(/^\/+/, "")}`, {
     method,
@@ -151,6 +153,13 @@ export const openbao = {
   /** List enabled secret engines (mounts). */
   listMounts: (token: string) =>
     request<MountsResponse>("sys/mounts", { token }),
+
+  /** Resolve the calling token's capabilities on one or more paths. */
+  capabilitiesSelf: (token: string, paths: string[], namespace?: string) =>
+    request<{ data: Record<string, string[]> & { capabilities?: string[] } }>(
+      "sys/capabilities-self",
+      { method: "POST", token, namespace, body: { paths } },
+    ),
 };
 
 export { OPENBAO_ADDR };

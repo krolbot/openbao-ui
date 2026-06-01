@@ -37,6 +37,9 @@ yarn-error.log*
 # CI temp build context
 /ci-ctx
 
+# local UI metadata store (SQLite) for `pnpm dev`
+/.data
+
 # editor
 .vscode/
 .idea/

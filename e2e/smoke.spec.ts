@@ -139,6 +139,40 @@ test("operations: status, quotas, plugins", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Recent activity" })).toBeVisible();
 });
 
+test("guides: generate an integration snippet for an environment", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Guides" }).click();
+  await expect(page.getByRole("heading", { name: "Integration guides" })).toBeVisible();
+
+  // the default (token) CLI snippet is wired to the dev `secret` KV mount
+  await expect(page.getByText("bao kv get -mount=secret")).toBeVisible();
+
+  // switching to AppRole regenerates the snippet with the login flow
+  await page.getByRole("button", { name: "AppRole" }).click();
+  await expect(page.getByText("auth/approle/login").first()).toBeVisible();
+});
+
+test("environments: customize a friendly display name", async ({ page }) => {
+  const friendly = `Prod ${Date.now()}`;
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui/secrets");
+  // root token is an operator, so the customize control is available
+  await page.getByRole("button", { name: "Customize secret/" }).click();
+  await page.fill("#lbl-name", friendly);
+  await page.getByRole("button", { name: "Save" }).click();
+
+  // the friendly name replaces the raw mount path as the card title
+  await expect(page.getByText(friendly)).toBeVisible();
+});
+
 test("settings: profile, preferences, namespaces", async ({ page }) => {
   await page.goto("/");
   await page.fill("#token", TOKEN);

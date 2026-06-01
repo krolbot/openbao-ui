@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { baoFetch } from "@/lib/bao-client";
 import { useMounts } from "@/lib/kv";
+import { labelKey, useLabels } from "@/lib/labels";
 import { useNamespace } from "@/lib/namespace";
 import { cn } from "@/lib/utils";
 
@@ -19,9 +20,13 @@ type Column = { mount: string; data: Record<string, unknown> | null; missing: bo
 export default function ComparePage() {
   const { namespace } = useNamespace();
   const mounts = useMounts();
+  const { data: labels } = useLabels();
   const kvMounts = Object.entries(mounts.data ?? {})
     .filter(([, v]) => v.type === "kv" || v.type === "generic")
     .map(([p]) => p.replace(/\/$/, ""));
+  // friendly environment name for a mount (falls back to the path)
+  const envName = (m: string) =>
+    labels?.[labelKey("environment", `${m}/`)]?.label || m;
 
   const [selected, setSelected] = React.useState<string[]>([]);
   const [path, setPath] = React.useState("");
@@ -105,7 +110,9 @@ export default function ComparePage() {
                 )}
               >
                 <input type="checkbox" checked={selected.includes(m)} onChange={() => toggleMount(m)} />
-                <span className="font-mono">{m}</span>
+                <span title={m} className={labels?.[labelKey("environment", `${m}/`)]?.label ? "font-medium" : "font-mono"}>
+                  {envName(m)}
+                </span>
               </label>
             ))}
           </div>
@@ -136,7 +143,12 @@ export default function ComparePage() {
                   <th className="px-3 py-2 font-medium">Key</th>
                   {cols.map((c) => (
                     <th key={c.mount} className="px-3 py-2 font-medium">
-                      <span className="font-mono normal-case">{c.mount}</span>
+                      <span className="normal-case">{envName(c.mount)}</span>
+                      {labels?.[labelKey("environment", `${c.mount}/`)]?.label ? (
+                        <span className="ml-1 font-mono text-[10px] font-normal text-muted-foreground">
+                          {c.mount}
+                        </span>
+                      ) : null}
                       {c.missing ? <span className="ml-1 text-[10px] text-amber-500">no secret</span> : null}
                     </th>
                   ))}
