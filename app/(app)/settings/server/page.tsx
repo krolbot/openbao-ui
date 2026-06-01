@@ -7,7 +7,14 @@ import { Disclosure } from "@/components/ui/disclosure";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BaoError } from "@/lib/bao-client";
-import { useCorsConfig, useSanitizedConfig, useSetCorsConfig } from "@/lib/settings";
+import {
+  useCorsConfig,
+  useLoggers,
+  useResetLoggers,
+  useSanitizedConfig,
+  useSetCorsConfig,
+  useSetLogLevel,
+} from "@/lib/settings";
 import { useSealStatus } from "@/lib/system";
 
 const errMsg = (e: unknown) =>
@@ -58,8 +65,52 @@ export default function ServerPage() {
         )}
       </section>
 
+      <LoggingCard />
       <CorsCard />
     </div>
+  );
+}
+
+const LOG_LEVELS = ["trace", "debug", "info", "warn", "error"];
+
+function LoggingCard() {
+  const loggers = useLoggers();
+  const setLevel = useSetLogLevel();
+  const reset = useResetLoggers();
+  // the "core" logger (or the first one) reflects the effective global level
+  const current =
+    loggers.data?.core ?? Object.values(loggers.data ?? {})[0] ?? "info";
+  const [level, setLevel2] = React.useState("info");
+  React.useEffect(() => setLevel2(current), [current]);
+
+  return (
+    <section className="mt-4 rounded-xl border p-6">
+      <h2 className="mb-1 text-sm font-medium">Logging</h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Adjust the server log level at runtime. Not persisted — reverts to the
+        configured level on restart.
+      </p>
+      <div className="flex items-end gap-2">
+        <div className="flex flex-col gap-2">
+          <span className="text-sm text-muted-foreground">Level</span>
+          <select
+            value={level}
+            onChange={(e) => setLevel2(e.target.value)}
+            className="h-9 rounded-md border bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {LOG_LEVELS.map((l) => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+        </div>
+        <Button size="sm" onClick={() => setLevel.mutate(level)} disabled={setLevel.isPending}>
+          Apply
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => reset.mutate()} disabled={reset.isPending}>
+          Reset
+        </Button>
+      </div>
+    </section>
   );
 }
 

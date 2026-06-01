@@ -77,3 +77,33 @@ better kept alongside the rate-limit quotas already under Operations.)
 
 Small enough to do in one pass, but if split: **(A)** Profile + About + enable
 nav; **(B)** Namespaces management; **(C)** Server/CORS + Preferences (3-way theme).
+
+## Implemented so far
+
+- Profile, Preferences, Namespaces, Server (+ CORS), About (initial pass).
+- **Preferences engine** (`lib/preferences.tsx`) wired into the app: reveal-secrets
+  by default, default editor (KV/raw JSON), toast duration, audit-refresh interval.
+- **Password Policies** tab (`sys/policies/password`) — CRUD + generate preview.
+- **Logging** card on the Server tab (`sys/loggers`) — runtime log level.
+
+## Discovered backlog (from deep API/UX research — ranked, OpenBao-OSS only)
+
+High-value, dev-verifiable additions still open:
+1. **Mount tuning** (`sys/mounts/:path/tune`) — per-engine description, lease TTLs,
+   listing visibility, audit-non-hmac keys, and per-auth `user_lockout_config`.
+2. **Locked users** dashboard + unlock (`sys/locked-users`).
+3. **Quota config** (`sys/quotas/config`) — rate-limit response headers / audit
+   logging / exempt paths (complements the rate-limit quotas under Operations).
+4. **UI custom headers** (`sys/config/ui/headers`) — complements CORS.
+5. **OIDC provider** (act as IdP) (`identity/oidc/*`) — providers/keys/clients/scopes.
+6. **Tools** utility belt (`sys/tools/random`, `sys/tools/hash`, `sys/wrapping/*`).
+7. **Key-rotation config** (`sys/rotate/keyring/config`) + `sys/key-status`, and Raft
+   autopilot config/state (`sys/storage/raft/autopilot/*`, raft-only).
+
+Explicitly out of scope (not in OpenBao OSS): replication, control groups,
+Sentinel RGP/EGP, client-count config, UI custom *messages*, namespace api-lock,
+plugin container runtimes.
+
+More client-side preferences worth adding later: TTL-warning threshold,
+typed-confirm strictness for all deletes, table density, date/time format,
+pinned/favorite mounts in ⌘K, reduce-motion.

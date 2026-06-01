@@ -127,6 +127,50 @@ export function useCorsConfig() {
   });
 }
 
+// --- dynamic loggers ---
+
+export function useLoggers() {
+  const { namespace } = useNamespace();
+  return useQuery({
+    queryKey: ["loggers", namespace],
+    queryFn: async (): Promise<Record<string, string>> => {
+      try {
+        const res = await baoFetch<{ data: Record<string, { log_level?: string } | string> }>(
+          { path: "sys/loggers", namespace },
+        );
+        const out: Record<string, string> = {};
+        for (const [name, v] of Object.entries(res.data ?? {})) {
+          out[name] = typeof v === "string" ? v : v.log_level ?? "";
+        }
+        return out;
+      } catch {
+        return {};
+      }
+    },
+  });
+}
+
+export function useSetLogLevel() {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  return useMutation({
+    meta: { success: "Log level updated", silentError: true },
+    mutationFn: async (level: string) =>
+      baoFetch({ path: "sys/loggers", method: "POST", namespace, body: { level } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["loggers", namespace] }),
+  });
+}
+
+export function useResetLoggers() {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  return useMutation({
+    meta: { success: "Log levels reset" },
+    mutationFn: async () => baoFetch({ path: "sys/loggers", method: "DELETE", namespace }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["loggers", namespace] }),
+  });
+}
+
 export function useSetCorsConfig() {
   const qc = useQueryClient();
   const { namespace } = useNamespace();

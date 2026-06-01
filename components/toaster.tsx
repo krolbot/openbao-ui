@@ -3,20 +3,23 @@
 import { CheckCircle2, X, XCircle } from "lucide-react";
 import * as React from "react";
 
+import { usePreferences } from "@/lib/preferences";
 import { toast, ToastItem } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
-const TIMEOUT = 4000;
-
 export function Toaster() {
   const [items, setItems] = React.useState<ToastItem[]>([]);
+  const { prefs } = usePreferences();
+  // read the latest duration without re-subscribing on every change
+  const durationRef = React.useRef(prefs.toastDurationMs);
+  durationRef.current = prefs.toastDurationMs;
 
   React.useEffect(() => {
     return toast.subscribe((item) => {
       setItems((prev) => [...prev, item]);
       setTimeout(() => {
         setItems((prev) => prev.filter((i) => i.id !== item.id));
-      }, TIMEOUT);
+      }, durationRef.current);
     });
   }, []);
 

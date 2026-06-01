@@ -19,6 +19,7 @@ export default function SettingsLayout({
     { href: "/settings", label: "Profile", show: true },
     { href: "/settings/preferences", label: "Preferences", show: true },
     { href: "/settings/namespaces", label: "Namespaces", show: can("sys/namespaces") },
+    { href: "/settings/password-policies", label: "Password Policies", show: can("sys/policies/password") },
     { href: "/settings/server", label: "Server", show: can("sys/config/state/sanitized") },
     { href: "/settings/about", label: "About", show: true },
   ].filter((t) => t.show);

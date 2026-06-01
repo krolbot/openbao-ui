@@ -6,6 +6,7 @@ import * as React from "react";
 import { CopyButton } from "@/components/copy-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { usePreferences } from "@/lib/preferences";
 
 function display(value: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value);
@@ -35,7 +36,8 @@ export function KvValueViewer({
 }
 
 function ViewerRow({ name, value }: { name: string; value: string }) {
-  const [shown, setShown] = React.useState(false);
+  const { prefs } = usePreferences();
+  const [shown, setShown] = React.useState(prefs.revealSecrets);
   return (
     <li className="flex items-center gap-2 px-3 py-2 text-sm">
       <span className="w-1/3 shrink-0 truncate font-mono font-medium">
@@ -80,7 +82,11 @@ export const KvKeyValueEditor = React.forwardRef<
   EditorHandle,
   { initial: Record<string, unknown> }
 >(function KvKeyValueEditor({ initial }, ref) {
-  const [raw, setRaw] = React.useState(() => hasNonString(initial));
+  const { prefs } = usePreferences();
+  // nested data forces raw JSON; otherwise honor the user's default editor
+  const [raw, setRaw] = React.useState(
+    () => hasNonString(initial) || prefs.editorMode === "json",
+  );
   const [rows, setRows] = React.useState<Row[]>(() => toRows(initial));
   const [json, setJson] = React.useState(() =>
     JSON.stringify(initial, null, 2),

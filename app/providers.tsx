@@ -11,6 +11,7 @@ import { ThemeProvider } from "@/components/theme";
 import { Toaster } from "@/components/toaster";
 import { BaoError } from "@/lib/bao-client";
 import { NamespaceProvider } from "@/lib/namespace";
+import { PreferencesProvider } from "@/lib/preferences";
 import { toast } from "@/lib/toast";
 
 function formatError(err: unknown): string {
@@ -49,8 +50,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <ThemeProvider>
-        <NamespaceProvider>{children}</NamespaceProvider>
-        <Toaster />
+        <PreferencesProvider>
+          <NamespaceProvider>{children}</NamespaceProvider>
+          <Toaster />
+        </PreferencesProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

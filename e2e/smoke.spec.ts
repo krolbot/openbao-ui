@@ -155,5 +155,9 @@ test("settings: profile, preferences, namespaces", async ({ page }) => {
   // namespaces management page
   await page.getByRole("link", { name: "Namespaces" }).click();
   await expect(page.getByRole("button", { name: "New namespace" })).toBeVisible();
+
+  // password policies tab
+  await page.getByRole("link", { name: "Password Policies" }).click();
+  await expect(page.getByRole("button", { name: "New policy" })).toBeVisible();
 });
 

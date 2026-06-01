@@ -3,10 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 
 import type { AuditRecord } from "@/lib/audit-parse";
+import { usePreferences } from "@/lib/preferences";
 
 export type { AuditRecord };
 
 export function useAuditLog() {
+  const { prefs } = usePreferences();
   return useQuery({
     queryKey: ["audit-log"],
     queryFn: async (): Promise<{ available: boolean; records: AuditRecord[] }> => {
@@ -14,6 +16,6 @@ export function useAuditLog() {
       if (!res.ok) return { available: false, records: [] };
       return res.json();
     },
-    refetchInterval: 10_000,
+    refetchInterval: prefs.auditRefreshMs > 0 ? prefs.auditRefreshMs : false,
   });
 }
