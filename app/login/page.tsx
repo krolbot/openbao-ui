@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+import { Logo } from "@/components/logo";
 import { SealGate } from "@/components/seal-gate";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,8 +105,11 @@ function LoginForm() {
     <main className="flex min-h-dvh items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Sign in to OpenBao</CardTitle>
-          <CardDescription>Authenticate to manage your secrets.</CardDescription>
+          <Logo variant="vertical" className="mx-auto mb-2 h-20 w-auto" />
+          <CardTitle className="text-center text-xl">Sign in to OpenBao</CardTitle>
+          <CardDescription className="text-center">
+            Authenticate to manage your secrets.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={submit} className="flex flex-col gap-4">

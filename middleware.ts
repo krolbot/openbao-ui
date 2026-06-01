@@ -12,9 +12,11 @@ export function middleware(req: NextRequest) {
   const rel = req.nextUrl.pathname.replace(/^\/ui/, "") || "/";
 
   // API routes self-authenticate and return JSON status codes (never redirect
-  // an XHR to the login HTML); only page navigations are gated here.
+  // an XHR to the login HTML); only page navigations are gated here. Static
+  // assets in public/ (e.g. the logo SVGs) must not be redirected either.
+  const isAsset = /\.(svg|png|jpe?g|gif|ico|webp|woff2?|css|js|map|txt)$/i.test(rel);
   const isPublic =
-    rel === "/login" || rel.startsWith("/login/") || rel.startsWith("/api/");
+    rel === "/login" || rel.startsWith("/login/") || rel.startsWith("/api/") || isAsset;
 
   if (isPublic) return NextResponse.next();
 
