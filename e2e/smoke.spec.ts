@@ -139,3 +139,21 @@ test("operations: status, quotas, plugins", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Recent activity" })).toBeVisible();
 });
 
+test("settings: profile, preferences, namespaces", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Settings" }).click();
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+
+  // preferences: theme options present
+  await page.getByRole("link", { name: "Preferences" }).click();
+  await expect(page.getByRole("heading", { name: "Theme" })).toBeVisible();
+
+  // namespaces management page
+  await page.getByRole("link", { name: "Namespaces" }).click();
+  await expect(page.getByRole("button", { name: "New namespace" })).toBeVisible();
+});
+

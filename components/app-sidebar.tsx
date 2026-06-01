@@ -26,7 +26,7 @@ export function AppSidebar({ displayName }: { displayName: string }) {
     { href: "/secrets", label: "Secrets", icon: KeyRound, show: can("sys/mounts") },
     { href: accessHref, label: "Access", icon: Users, show: true },
     { href: "/operations", label: "Operations", icon: Activity, show: can("sys/audit") },
-    { href: "/settings", label: "Settings", icon: Settings, show: true, disabled: true },
+    { href: "/settings", label: "Settings", icon: Settings, show: true },
   ].filter((n) => n.show);
 
   return (
@@ -42,20 +42,9 @@ export function AppSidebar({ displayName }: { displayName: string }) {
       </div>
 
       <nav className="flex-1 space-y-1 p-3">
-        {nav.map(({ href, label, icon: Icon, disabled }) => {
+        {nav.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? rel === "/" : rel.startsWith(href);
-          return disabled ? (
-            <span
-              key={href}
-              className="flex cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground/50"
-            >
-              <Icon className="size-4" />
-              {label}
-              <span className="ml-auto text-[10px] uppercase tracking-wide">
-                soon
-              </span>
-            </span>
-          ) : (
+          return (
             <Link
               key={href}
               href={href}

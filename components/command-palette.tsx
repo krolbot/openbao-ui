@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Moon,
   Search,
+  Settings as SettingsIcon,
   Shield,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -73,6 +74,9 @@ export function CommandPalette() {
       { id: "ops-audit", label: "Operations · Audit", icon: <Activity />, run: go("/operations/audit") },
       { id: "ops-quotas", label: "Operations · Quotas", icon: <Activity />, run: go("/operations/quotas") },
       { id: "ops-plugins", label: "Operations · Plugins", icon: <Activity />, run: go("/operations/plugins") },
+      { id: "settings", label: "Settings · Profile", icon: <SettingsIcon />, run: go("/settings") },
+      { id: "settings-prefs", label: "Settings · Preferences", icon: <SettingsIcon />, run: go("/settings/preferences") },
+      { id: "settings-ns", label: "Settings · Namespaces", icon: <SettingsIcon />, run: go("/settings/namespaces") },
       { id: "theme", label: "Toggle dark mode", icon: <Moon />, run: () => { toggle(); setOpen(false); } },
     ];
     const kvMounts = Object.keys(mounts ?? {}).map((path) => {
