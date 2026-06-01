@@ -14,6 +14,7 @@ export default function SettingsLayout({
   const TABS = [
     { href: "/settings", label: "Profile", show: true },
     { href: "/settings/preferences", label: "Preferences", show: true },
+    { href: "/settings/login", label: "Login Page", show: can("sys/mounts") },
     { href: "/settings/namespaces", label: "Namespaces", show: can("sys/namespaces") },
     { href: "/settings/password-policies", label: "Password Policies", show: can("sys/policies/password") },
     { href: "/settings/server", label: "Server", show: can("sys/config/state/sanitized") },

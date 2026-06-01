@@ -201,6 +201,9 @@ export type AuthTune = {
   default_lease_ttl: number;
   max_lease_ttl: number;
   token_type?: string;
+  // "unauth" surfaces the method on the (unauthenticated) login page;
+  // "hidden" (default) keeps it off the discovery list.
+  listing_visibility?: string;
 };
 
 export function useAuthTune(path: string) {
@@ -226,6 +229,7 @@ export function useSetAuthTune(path: string) {
       description?: string;
       default_lease_ttl?: string;
       max_lease_ttl?: string;
+      listing_visibility?: string;
     }) =>
       baoFetch({
         path: `sys/auth/${m(path)}/tune`,

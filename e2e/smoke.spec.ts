@@ -195,3 +195,52 @@ test("settings: profile, preferences, namespaces", async ({ page }) => {
   await expect(page.getByRole("button", { name: "New policy" })).toBeVisible();
 });
 
+test("auth: Google sign-in wizard renders", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui/access/auth");
+  await page.getByRole("button", { name: "Set up Google sign-in" }).click();
+  await expect(page.getByRole("heading", { name: "Set up Google sign-in" })).toBeVisible();
+  // the callback redirect URI the operator must register with Google is shown
+  await expect(page.getByText("/ui/api/auth/oidc/callback")).toBeVisible();
+  await expect(page.getByText("Client ID")).toBeVisible();
+  // close without submitting (no external network needed)
+  await page.getByRole("button", { name: "Cancel" }).click();
+});
+
+// NOTE: keep this LAST — it enables an unauth auth method and sets branding,
+// which changes the shared login page for any test that runs afterwards.
+test("login customization: branding + method discovery", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  // enable an OIDC method and surface it on the login page (listing_visibility)
+  await page.goto("/ui/access/auth");
+  await page.getByRole("button", { name: "Enable method" }).click();
+  await page.getByRole("dialog").locator("select").selectOption("oidc");
+  await page.getByRole("button", { name: "Enable", exact: true }).click();
+  // select the freshly enabled method from the list, then open Tune
+  await page.getByRole("button", { name: /oidc\// }).click();
+  await page.getByRole("button", { name: /^Tune/ }).click();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Save tune" }).click();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  // brand the login page via Settings → Login Page
+  await page.goto("/ui/settings/login");
+  await page.getByPlaceholder("Sign in to OpenBao").fill("Acme Vault");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  // the login page reflects branding + discovered method, token tucked away
+  await page.goto("/ui/login");
+  await expect(page.getByText("Acme Vault")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Continue with oidc/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Other ways to sign in" })).toBeVisible();
+});
+

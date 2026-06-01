@@ -1,10 +1,11 @@
 "use client";
 
-import { Key, Plus, Trash2 } from "lucide-react";
+import { Key, LogIn, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CopyButton } from "@/components/copy-button";
+import { GoogleOidcWizard } from "@/components/google-oidc-wizard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Disclosure } from "@/components/ui/disclosure";
@@ -43,6 +44,7 @@ export default function AuthMethodsPage() {
   const methods = useAuthMethods();
   const [selected, setSelected] = React.useState<AuthMount | null>(null);
   const [enabling, setEnabling] = React.useState(false);
+  const [googleWizard, setGoogleWizard] = React.useState(false);
   const [disabling, setDisabling] = React.useState<AuthMount | null>(null);
   const disable = useDisableAuth();
 
@@ -54,6 +56,14 @@ export default function AuthMethodsPage() {
       <div className="w-72 shrink-0 overflow-auto border-r p-3">
         <Button size="sm" className="mb-2 w-full" onClick={() => setEnabling(true)}>
           <Plus /> Enable method
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="mb-2 w-full"
+          onClick={() => setGoogleWizard(true)}
+        >
+          <LogIn /> Set up Google sign-in
         </Button>
         {methods.isLoading ? (
           <p className="p-2 text-sm text-muted-foreground">Loading…</p>
@@ -110,6 +120,16 @@ export default function AuthMethodsPage() {
             setEnabling(false);
             const found = methods.data?.find((m) => m.path === p);
             if (found) setSelected(found);
+          }}
+        />
+      ) : null}
+
+      {googleWizard ? (
+        <GoogleOidcWizard
+          onClose={() => setGoogleWizard(false)}
+          onDone={() => {
+            setGoogleWizard(false);
+            methods.refetch();
           }}
         />
       ) : null}
@@ -174,6 +194,7 @@ function TuneSection({ path }: { path: string }) {
   const [description, setDescription] = React.useState("");
   const [def, setDef] = React.useState("");
   const [max, setMax] = React.useState("");
+  const [listed, setListed] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [saved, setSaved] = React.useState(false);
 
@@ -182,6 +203,7 @@ function TuneSection({ path }: { path: string }) {
       setDescription(tune.data.description ?? "");
       setDef(String(tune.data.default_lease_ttl ?? ""));
       setMax(String(tune.data.max_lease_ttl ?? ""));
+      setListed(tune.data.listing_visibility === "unauth");
     }
   }, [tune.data]);
 
@@ -198,6 +220,7 @@ function TuneSection({ path }: { path: string }) {
               description,
               default_lease_ttl: def,
               max_lease_ttl: max,
+              listing_visibility: listed ? "unauth" : "hidden",
             });
             setSaved(true);
           } catch (err) {
@@ -216,6 +239,14 @@ function TuneSection({ path }: { path: string }) {
             <Input value={max} onChange={(e) => setMax(e.target.value)} placeholder="e.g. 768h or seconds" />
           </Field>
         </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={listed}
+            onChange={(e) => setListed(e.target.checked)}
+          />
+          Show this method on the login page (listing_visibility)
+        </label>
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         <div className="flex items-center gap-3">
           <Button type="submit" size="sm" disabled={save.isPending}>
@@ -581,6 +612,8 @@ const FIELD_SPECS: Record<string, MethodSpec> = {
       fields: [
         { key: "token_policies", label: "Token policies", kind: "list", placeholder: "default" },
         { key: "user_claim", label: "User claim", placeholder: "sub" },
+        { key: "groups_claim", label: "Groups claim", placeholder: "groups" },
+        { key: "oidc_scopes", label: "OIDC scopes", kind: "list", placeholder: "openid, email, profile" },
         { key: "bound_audiences", label: "Bound audiences", kind: "list" },
         { key: "allowed_redirect_uris", label: "Allowed redirect URIs", kind: "list" },
         { key: "role_type", label: "Role type", placeholder: "oidc or jwt" },
