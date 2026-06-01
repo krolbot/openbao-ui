@@ -102,8 +102,8 @@ function LoginForm() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-sm">
+    <main className="flex min-h-dvh items-center justify-center bg-gradient-to-b from-muted/30 to-muted/60 p-4">
+      <Card className="w-full max-w-sm rounded-2xl shadow-xl duration-300 animate-in fade-in-0 zoom-in-95">
         <CardHeader>
           <Logo variant="vertical" className="mx-auto mb-2 h-20 w-auto" />
           <CardTitle className="text-center text-xl">Sign in to OpenBao</CardTitle>

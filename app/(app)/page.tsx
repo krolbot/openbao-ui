@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 
 import { Disclosure } from "@/components/ui/disclosure";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useResultantAcl } from "@/lib/acl";
 import { useAuthMethods } from "@/lib/auth-methods";
 import { useSession } from "@/lib/auth-hooks";
@@ -37,18 +38,21 @@ export default function OverviewPage() {
 
       {/* hero: the two things you check first */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border p-5">
-          <div className="mb-2 flex items-center justify-between">
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">
               Status
             </span>
-            {sealed ? (
-              <Lock className="size-4 text-destructive" />
-            ) : (
-              <Unlock className="size-4 text-emerald-500" />
-            )}
+            <div
+              className={
+                "flex size-9 items-center justify-center rounded-lg " +
+                (sealed ? "bg-destructive/10 text-destructive" : "bg-emerald-500/10 text-emerald-600")
+              }
+            >
+              {sealed ? <Lock className="size-4" /> : <Unlock className="size-4" />}
+            </div>
           </div>
-          <div className="text-2xl font-semibold">
+          <div className="text-2xl font-semibold tracking-tight">
             {seal.isLoading
               ? "…"
               : seal.isError
@@ -64,21 +68,23 @@ export default function OverviewPage() {
           ) : null}
         </div>
 
-        <div className="rounded-xl border p-5">
-          <div className="mb-2 flex items-center justify-between">
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">
               Signed in as
             </span>
-            <ShieldCheck className="size-4 text-muted-foreground" />
+            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <ShieldCheck className="size-4" />
+            </div>
           </div>
-          <div className="truncate text-2xl font-semibold">
+          <div className="truncate text-2xl font-semibold tracking-tight">
             {session.data?.displayName ?? "…"}
           </div>
-          <div className="mt-1 flex flex-wrap gap-1">
+          <div className="mt-2 flex flex-wrap gap-1">
             {(session.data?.policies ?? []).map((p) => (
               <span
                 key={p}
-                className="rounded bg-secondary px-1.5 py-0.5 text-xs text-secondary-foreground"
+                className="rounded-md bg-secondary px-1.5 py-0.5 text-xs font-medium text-secondary-foreground"
               >
                 {p}
               </span>
@@ -151,18 +157,22 @@ function StatTile({
   return (
     <Link
       href={href}
-      className="group flex items-center gap-3 rounded-xl border p-4 transition-colors hover:bg-accent"
+      className="group flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
     >
-      <div className="flex size-9 items-center justify-center rounded-md bg-secondary text-muted-foreground">
+      <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-2xl font-semibold">
-          {loading ? "…" : denied ? "—" : value}
-        </div>
+        {loading ? (
+          <Skeleton className="h-7 w-10" />
+        ) : (
+          <div className="text-2xl font-semibold tabular-nums tracking-tight">
+            {denied ? "—" : value}
+          </div>
+        )}
         <div className="text-xs text-muted-foreground">{label}</div>
       </div>
-      <ChevronRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+      <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
     </Link>
   );
 }

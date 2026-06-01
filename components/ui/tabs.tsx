@@ -52,7 +52,7 @@ function TabsList({ className, ...props }: React.ComponentProps<"div">) {
     <div
       role="tablist"
       className={cn(
-        "inline-flex h-9 w-full items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+        "inline-flex h-9 w-full items-center justify-center rounded-lg border bg-muted/60 p-1 text-muted-foreground",
         className,
       )}
       {...props}
@@ -75,9 +75,9 @@ function TabsTrigger({
       data-state={active ? "active" : "inactive"}
       onClick={() => ctx.setValue(value)}
       className={cn(
-        "inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
         active
-          ? "bg-background text-foreground shadow"
+          ? "bg-card text-foreground shadow-sm"
           : "hover:text-foreground",
         className,
       )}
@@ -96,7 +96,7 @@ function TabsContent({
   return (
     <div
       role="tabpanel"
-      className={cn("focus-visible:outline-none", className)}
+      className={cn("duration-200 animate-in fade-in-0", className)}
       {...props}
     />
   );

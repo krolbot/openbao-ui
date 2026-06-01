@@ -113,20 +113,20 @@ export function CommandPalette() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-2 rounded-md border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+        className="flex w-full items-center gap-2 rounded-lg border px-3 py-1.5 text-sm text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-foreground"
       >
         <Search className="size-4" />
         <span className="flex-1 text-left">Search…</span>
-        <kbd className="rounded border bg-muted px-1.5 text-xs">⌘K</kbd>
+        <kbd className="rounded border bg-muted px-1.5 font-sans text-[10px] font-medium">⌘K</kbd>
       </button>
 
       {open ? (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[15vh]"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/40 p-4 pt-[15vh] backdrop-blur-sm duration-150 animate-in fade-in-0"
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full max-w-lg overflow-hidden rounded-xl border bg-card shadow-lg"
+            className="w-full max-w-xl overflow-hidden rounded-2xl border bg-card shadow-xl duration-150 animate-in fade-in-0 zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2 border-b px-3">
@@ -154,8 +154,10 @@ export function CommandPalette() {
                     <button
                       onMouseEnter={() => setActive(i)}
                       onClick={c.run}
-                      className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm [&_svg]:size-4 [&_svg]:text-muted-foreground ${
-                        i === active ? "bg-accent" : ""
+                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors [&_svg]:size-4 ${
+                        i === active
+                          ? "bg-primary/10 text-primary [&_svg]:text-primary"
+                          : "[&_svg]:text-muted-foreground"
                       }`}
                     >
                       {c.icon}

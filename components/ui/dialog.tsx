@@ -28,14 +28,14 @@ export function Dialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm duration-150 animate-in fade-in-0"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         className={cn(
-          "w-full max-w-lg rounded-xl border bg-card p-6 shadow-lg",
+          "w-full max-w-lg rounded-2xl border bg-card p-6 shadow-xl duration-150 animate-in fade-in-0 zoom-in-95",
           className,
         )}
         onClick={(e) => e.stopPropagation()}

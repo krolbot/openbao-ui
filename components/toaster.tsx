@@ -33,7 +33,7 @@ export function Toaster() {
           key={t.id}
           role="status"
           className={cn(
-            "pointer-events-auto flex items-start gap-2 rounded-lg border bg-card p-3 text-sm shadow-lg",
+            "pointer-events-auto flex items-start gap-2.5 rounded-xl border bg-card p-3 text-sm shadow-lg duration-200 animate-in slide-in-from-bottom-3 fade-in-0",
             t.kind === "error" ? "border-destructive/40" : "border-emerald-500/40",
           )}
         >

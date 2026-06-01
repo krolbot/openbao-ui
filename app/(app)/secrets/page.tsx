@@ -4,6 +4,7 @@ import { Box, Database, GitCompare, KeyRound, Lock, ScrollText, Settings, Termin
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useMounts } from "@/lib/kv";
 
 // engines with a dedicated dashboard / destination (clickable)
@@ -62,7 +63,17 @@ export default function SecretsPage() {
       </header>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading engines…</p>
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <li key={i} className="flex items-start gap-3 rounded-xl border bg-card p-4 shadow-sm">
+              <Skeleton className="size-9 rounded-lg" />
+              <div className="flex-1 space-y-2 py-0.5">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+            </li>
+          ))}
+        </ul>
       ) : isError ? (
         <p className="text-sm text-destructive">
           Could not load mounts. Check your token&apos;s permissions.
@@ -75,8 +86,8 @@ export default function SecretsPage() {
             const { icon: Icon, blurb } = engineMeta(info.type);
             const version = info.options?.version;
             const inner = (
-              <div className="flex items-start gap-3 rounded-xl border p-4 transition-colors group-hover:bg-accent">
-                <div className="flex size-9 items-center justify-center rounded-md bg-secondary">
+              <div className="flex h-full items-start gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all duration-150 group-hover:-translate-y-0.5 group-hover:border-primary/30 group-hover:shadow-md">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon className="size-4" />
                 </div>
                 <div className="min-w-0">
