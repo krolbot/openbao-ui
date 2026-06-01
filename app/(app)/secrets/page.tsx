@@ -3,6 +3,8 @@
 import { Box, Database, GitCompare, KeyRound, Lock, ScrollText, Settings, Terminal, Users } from "lucide-react";
 import Link from "next/link";
 
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMounts } from "@/lib/kv";
@@ -48,19 +50,18 @@ export default function SecretsPage() {
 
   return (
     <div className="mx-auto max-w-5xl p-8">
-      <header className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Secrets</h1>
-          <p className="text-muted-foreground">
-            Secret engines mounted in this namespace.
-          </p>
-        </div>
-        <Link href="/secrets/compare">
-          <Button variant="outline" size="sm">
-            <GitCompare /> Compare
-          </Button>
-        </Link>
-      </header>
+      <PageHeader
+        title="Secrets"
+        description="Secret engines mounted in this namespace."
+        className="mb-6"
+        actions={
+          <Link href="/secrets/compare">
+            <Button variant="outline" size="sm">
+              <GitCompare /> Compare
+            </Button>
+          </Link>
+        }
+      />
 
       {isLoading ? (
         <ul className="grid gap-3 sm:grid-cols-2">
@@ -93,10 +94,10 @@ export default function SecretsPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-medium">{path}</span>
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                    <Badge variant="muted">
                       {info.type}
                       {version ? ` v${version}` : ""}
-                    </span>
+                    </Badge>
                   </div>
                   <p className="truncate text-sm text-muted-foreground">
                     {info.description || blurb}

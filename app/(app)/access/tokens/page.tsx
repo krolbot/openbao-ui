@@ -5,6 +5,7 @@ import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CopyButton } from "@/components/copy-button";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -46,42 +47,37 @@ export default function TokensPage() {
       ) : tokens.isError ? (
         <p className="text-sm text-destructive">{errMsg(tokens.error)}</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border">
+        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+            <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-2 font-medium">Display name</th>
-                <th className="px-4 py-2 font-medium">Policies</th>
-                <th className="px-4 py-2 font-medium">TTL</th>
-                <th className="px-4 py-2 font-medium">Accessor</th>
-                <th className="px-4 py-2"></th>
+                <th className="px-4 py-2.5 font-medium">Display name</th>
+                <th className="px-4 py-2.5 font-medium">Policies</th>
+                <th className="px-4 py-2.5 font-medium">TTL</th>
+                <th className="px-4 py-2.5 font-medium">Accessor</th>
+                <th className="px-4 py-2.5"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {(tokens.data ?? []).map((t) => (
-                <tr key={t.accessor}>
-                  <td className="px-4 py-2 font-medium">
+                <tr key={t.accessor} className="transition-colors hover:bg-muted/40">
+                  <td className="px-4 py-2.5 font-medium">
                     {t.display_name || "—"}
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-1">
                       {t.policies.map((p) => (
-                        <span
-                          key={p}
-                          className="rounded bg-secondary px-1.5 py-0.5 text-xs"
-                        >
-                          {p}
-                        </span>
+                        <Badge key={p}>{p}</Badge>
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-muted-foreground">
+                  <td className="px-4 py-2.5 tabular-nums text-muted-foreground">
                     {fmtTtl(t.ttl)}
                   </td>
-                  <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
+                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
                     {t.accessor.slice(0, 10)}…
                   </td>
-                  <td className="px-4 py-2 text-right">
+                  <td className="px-4 py-2.5 text-right">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -97,7 +93,7 @@ export default function TokensPage() {
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-4 py-6 text-center text-muted-foreground"
+                    className="px-4 py-10 text-center text-muted-foreground"
                   >
                     No tokens found.
                   </td>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import * as React from "react";
 
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,18 +76,18 @@ export default function ComparePage() {
       <Link href="/secrets" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> Secrets
       </Link>
-      <header className="mb-6">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          <GitCompare className="size-6" /> Compare environments
-        </h1>
-        <p className="text-muted-foreground">
-          See a secret&apos;s keys side-by-side across KV engines — what&apos;s set,
-          missing, or different.
-        </p>
-      </header>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            <GitCompare className="size-6" /> Compare environments
+          </span>
+        }
+        description="See a secret's keys side-by-side across KV engines — what's set, missing, or different."
+        className="mb-6"
+      />
 
       <form
-        className="mb-6 flex flex-col gap-3 rounded-xl border p-4"
+        className="mb-6 flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm"
         onSubmit={(e) => {
           e.preventDefault();
           if (path.trim() && selected.length) setQuery({ mounts: selected, path: path.trim() });

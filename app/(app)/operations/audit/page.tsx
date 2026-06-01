@@ -3,6 +3,7 @@
 import { FileText, Info } from "lucide-react";
 import * as React from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { BaoError } from "@/lib/bao-client";
 import { useAuditLog } from "@/lib/audit-log";
@@ -84,37 +85,35 @@ export default function AuditPage() {
           <span className="font-mono">docker/openbao.hcl</span>) to capture activity.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-xl border">
+        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+              <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Time</th>
-                  <th className="px-3 py-2 font-medium">Type</th>
-                  <th className="px-3 py-2 font-medium">Op</th>
-                  <th className="px-3 py-2 font-medium">Path</th>
-                  <th className="px-3 py-2 font-medium">Source</th>
+                  <th className="px-3 py-2.5 font-medium">Time</th>
+                  <th className="px-3 py-2.5 font-medium">Type</th>
+                  <th className="px-3 py-2.5 font-medium">Op</th>
+                  <th className="px-3 py-2.5 font-medium">Path</th>
+                  <th className="px-3 py-2.5 font-medium">Source</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {records.map((r, i) => (
-                  <tr key={i} className={r.error ? "bg-destructive/5" : undefined}>
-                    <td className="whitespace-nowrap px-3 py-1.5 text-xs text-muted-foreground">
+                  <tr key={i} className={r.error ? "bg-destructive/5" : "transition-colors hover:bg-muted/40"}>
+                    <td className="whitespace-nowrap px-3 py-2 text-xs tabular-nums text-muted-foreground">
                       {r.time ? new Date(r.time).toLocaleTimeString() : "—"}
                     </td>
-                    <td className="px-3 py-1.5">
-                      <span className={`rounded px-1.5 py-0.5 text-xs ${r.type === "response" ? "bg-secondary" : "bg-muted text-muted-foreground"}`}>
-                        {r.type}
-                      </span>
+                    <td className="px-3 py-2">
+                      <Badge variant={r.type === "response" ? "default" : "muted"}>{r.type}</Badge>
                     </td>
-                    <td className="px-3 py-1.5 font-mono text-xs">{r.operation ?? "—"}</td>
-                    <td className="px-3 py-1.5 font-mono text-xs">{r.path ?? "—"}</td>
-                    <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">{r.remote_address ?? "—"}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{r.operation ?? "—"}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{r.path ?? "—"}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{r.remote_address ?? "—"}</td>
                   </tr>
                 ))}
                 {records.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
+                    <td colSpan={5} className="px-3 py-10 text-center text-muted-foreground">
                       {log.isLoading ? "Loading…" : "No matching events."}
                     </td>
                   </tr>

@@ -54,7 +54,7 @@ test("kv lifecycle: create, view, delete a secret", async ({ page }) => {
   await page.getByRole("button", { name: "Delete everything" }).click();
 
   // detail panel clears
-  await expect(page.getByText("Select a secret to view it, or create a new one.")).toBeVisible();
+  await expect(page.getByText("No secret selected")).toBeVisible();
 });
 
 test("access section: policies, capabilities, tokens", async ({ page }) => {

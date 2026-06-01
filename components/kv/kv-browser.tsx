@@ -11,6 +11,7 @@ import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import * as React from "react";
 
+import { EmptyState } from "@/components/empty-state";
 import { SecretDetail } from "@/components/kv/secret-detail";
 import {
   EditorHandle,
@@ -83,9 +84,12 @@ export function KvBrowser({
                 : "Failed to list"}
             </p>
           ) : keys.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">
-              No secrets here yet.
-            </p>
+            <EmptyState
+              icon={FileKey}
+              title="No secrets here"
+              description="Create a secret in this path to get started."
+              className="py-10"
+            />
           ) : (
             <ul className="p-2">
               {folders.map((f) => (
@@ -125,8 +129,12 @@ export function KvBrowser({
               onDeleted={() => setSelected(null)}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Select a secret to view it, or create a new one.
+            <div className="flex h-full items-center justify-center">
+              <EmptyState
+                icon={FileKey}
+                title="No secret selected"
+                description="Pick a secret from the list to view it, or create a new one."
+              />
             </div>
           )}
         </div>

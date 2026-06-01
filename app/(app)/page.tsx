@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Disclosure } from "@/components/ui/disclosure";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useResultantAcl } from "@/lib/acl";
@@ -31,10 +33,11 @@ export default function OverviewPage() {
 
   return (
     <div className="mx-auto max-w-5xl p-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
-        <p className="text-muted-foreground">Your OpenBao at a glance.</p>
-      </header>
+      <PageHeader
+        title="Overview"
+        description="Your OpenBao at a glance."
+        className="mb-6"
+      />
 
       {/* hero: the two things you check first */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -82,12 +85,7 @@ export default function OverviewPage() {
           </div>
           <div className="mt-2 flex flex-wrap gap-1">
             {(session.data?.policies ?? []).map((p) => (
-              <span
-                key={p}
-                className="rounded-md bg-secondary px-1.5 py-0.5 text-xs font-medium text-secondary-foreground"
-              >
-                {p}
-              </span>
+              <Badge key={p}>{p}</Badge>
             ))}
           </div>
         </div>
