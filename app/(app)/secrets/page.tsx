@@ -87,7 +87,13 @@ export default function SecretsPage() {
         </p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
-          {Object.entries(mounts ?? {}).map(([path, info]) => {
+          {Object.entries(mounts ?? {})
+            // surface KV "environments" ahead of system engines (cubbyhole/identity/sys)
+            .sort(([, a], [, b]) => {
+              const env = (t: string) => (t === "kv" || t === "generic" ? 0 : 1);
+              return env(a.type) - env(b.type);
+            })
+            .map(([path, info]) => {
             const name = path.replace(/\/$/, "");
             const supported = SUPPORTED.has(info.type);
             const isEnv = info.type === "kv" || info.type === "generic";

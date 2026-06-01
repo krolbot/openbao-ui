@@ -64,20 +64,23 @@ export default function TeamPage() {
                     <span className="font-medium capitalize">{t.name}</span>
                   </div>
                   <p className="min-h-8 text-xs text-muted-foreground">{t.description}</p>
-                  {created ? (
-                    <Badge variant="success" className="self-start">
-                      <Check className="size-3" /> Created
-                    </Badge>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={apply.isPending}
-                      onClick={() => apply.mutate(t)}
-                    >
-                      Create role
-                    </Button>
-                  )}
+                  <div className="mt-auto pt-1">
+                    {created ? (
+                      <Badge variant="success">
+                        <Check className="size-3" /> Created
+                      </Badge>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        disabled={apply.isPending}
+                        onClick={() => apply.mutate(t)}
+                      >
+                        Create role
+                      </Button>
+                    )}
+                  </div>
                 </li>
               );
             })}
@@ -209,7 +212,7 @@ function MemberDetail({
                 className="inline-flex items-center gap-1.5 rounded-md border bg-card px-2 py-1 text-sm"
               >
                 <span className={`size-2 rounded-full ${colorDot(colorByName[g.name])}`} />
-                {g.name}
+                <span className="capitalize">{g.name}</span>
                 <button
                   type="button"
                   title="Remove role"

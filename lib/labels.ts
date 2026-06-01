@@ -25,16 +25,6 @@ export type LabelMap = Record<string, Label>; // key = `${scope}:${ref}`
 
 export const labelKey = (scope: LabelScope, ref: string) => `${scope}:${ref}`;
 
-/** Pick a label out of a map, falling back to the native name. */
-export function nameFor(
-  labels: LabelMap | undefined,
-  scope: LabelScope,
-  ref: string,
-  fallback: string,
-): string {
-  return labels?.[labelKey(scope, ref)]?.label || fallback;
-}
-
 /**
  * Labels for a namespace. Defaults to the current namespace; pass "" to read
  * the root-scoped workspace labels (namespaces are labeled globally there).
