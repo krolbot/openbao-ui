@@ -4,6 +4,17 @@
 // namespace header, encodes LIST as ?list=true, and normalizes OpenBao errors.
 const BASE = "/ui/api/bao";
 
+/** Parse a body as JSON, returning null for empty/non-JSON payloads so a
+ *  non-JSON error response still becomes a BaoError rather than a throw. */
+function parseJsonSafe(text: string) {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 export class BaoError extends Error {
   status: number;
   errors: string[];
@@ -51,7 +62,9 @@ export async function baoFetch<T = unknown>({
   });
 
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  // Tolerate non-JSON bodies (502 HTML, empty responses) so they surface as a
+  // BaoError via the status check below instead of throwing a parse error.
+  const data = parseJsonSafe(text);
 
   if (!res.ok) {
     const errors: string[] = data?.errors?.length

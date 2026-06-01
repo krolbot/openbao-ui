@@ -12,7 +12,10 @@ FROM node:22-alpine AS deps
 RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile || pnpm install
+# Reproducible installs: use a frozen lockfile when one is present, and only
+# fall back to a fresh resolve when there genuinely is no lockfile — never
+# silently on a frozen-install failure (which would mask dependency drift).
+RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
 
 # --- Stage 2: build the Next.js standalone output ---------------------------
 FROM node:22-alpine AS builder

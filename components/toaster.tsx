@@ -15,12 +15,21 @@ export function Toaster() {
   durationRef.current = prefs.toastDurationMs;
 
   React.useEffect(() => {
-    return toast.subscribe((item) => {
+    // Track pending auto-dismiss timers so we can clear them on unmount and
+    // avoid setItems firing on an unmounted component (route change / HMR).
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const unsubscribe = toast.subscribe((item) => {
       setItems((prev) => [...prev, item]);
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        timers.delete(timer);
         setItems((prev) => prev.filter((i) => i.id !== item.id));
       }, durationRef.current);
+      timers.add(timer);
     });
+    return () => {
+      unsubscribe();
+      timers.forEach(clearTimeout);
+    };
   }, []);
 
   const dismiss = (id: number) =>

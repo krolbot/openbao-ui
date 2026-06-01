@@ -25,10 +25,31 @@ function Redirect({ to }: { to: string }) {
 
 export default function MountPage() {
   const params = useParams<{ mount: string; path?: string[] }>();
-  const mount = decodeURIComponent(params.mount);
-  const segments = (params.path ?? []).map(decodeURIComponent);
+  const all = [
+    decodeURIComponent(params.mount),
+    ...(params.path ?? []).map(decodeURIComponent),
+  ];
 
   const mounts = useMounts();
+
+  // Mounts can live at nested paths (e.g. "team/kv/"), but the route only
+  // captures a single [mount] segment. Resolve the real mount as the longest
+  // known mount path that prefixes the URL segments; the rest is the secret path.
+  const { mount, segments } = React.useMemo(() => {
+    const keys = Object.keys(mounts.data ?? {});
+    let best = "";
+    for (const k of keys) {
+      const m = k.replace(/\/$/, "");
+      const segs = m.split("/");
+      if (segs.every((s, i) => all[i] === s) && m.length > best.length) best = m;
+    }
+    if (best) {
+      return { mount: best, segments: all.slice(best.split("/").length) };
+    }
+    return { mount: all[0], segments: all.slice(1) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounts.data, params.mount, (params.path ?? []).join("/")]);
+
   const info = mounts.data?.[`${mount}/`];
   const type = info?.type;
 

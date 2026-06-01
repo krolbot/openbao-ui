@@ -21,8 +21,16 @@ export function middleware(req: NextRequest) {
   // an XHR to the login HTML); only page navigations are gated here. Static
   // assets in public/ (e.g. the logo SVGs) must not be redirected either.
   const isAsset = /\.(svg|png|jpe?g|gif|ico|webp|woff2?|css|js|map|txt)$/i.test(rel);
+  // /v1/* is the unauthenticated OpenBao proxy used by the seal/bootstrap and
+  // login-discovery flows. It already sits outside basePath (so middleware
+  // normally doesn't run on it), but exempt it explicitly as defense in depth.
   const isPublic =
-    rel === "/login" || rel.startsWith("/login/") || rel.startsWith("/api/") || isAsset;
+    rel === "/login" ||
+    rel.startsWith("/login/") ||
+    rel.startsWith("/api/") ||
+    rel === "/v1" ||
+    rel.startsWith("/v1/") ||
+    isAsset;
 
   if (isPublic) return NextResponse.next();
 

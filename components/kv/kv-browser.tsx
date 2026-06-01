@@ -22,7 +22,7 @@ import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BaoError, baoFetch } from "@/lib/bao-client";
-import { useKvList } from "@/lib/kv";
+import { useKvIsV2, useKvList } from "@/lib/kv";
 import { useNamespace } from "@/lib/namespace";
 
 const join = (...parts: string[]) =>
@@ -168,6 +168,7 @@ function CreateSecretDialog({
   onCreated: (path: string) => void;
 }) {
   const { namespace } = useNamespace();
+  const v2 = useKvIsV2(mount);
   const [name, setName] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const editorRef = React.useRef<EditorHandle>(null);
@@ -177,12 +178,17 @@ function CreateSecretDialog({
     mutationFn: async () => {
       const path = join(folder, name.trim());
       const data = editorRef.current!.getData();
-      await baoFetch({
-        path: `${mount}/data/${path}`,
-        method: "POST",
-        namespace,
-        body: { data, options: { cas: 0 } }, // cas:0 == create only
-      });
+      if (v2 === false) {
+        // v1: write fields directly at the mount path (no versioning/cas)
+        await baoFetch({ path: `${mount}/${path}`, method: "POST", namespace, body: data });
+      } else {
+        await baoFetch({
+          path: `${mount}/data/${path}`,
+          method: "POST",
+          namespace,
+          body: { data, options: { cas: 0 } }, // cas:0 == create only
+        });
+      }
       return path;
     },
     onSuccess: onCreated,

@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ errors: ["not authenticated"] }, { status: 401 });
   }
-  const ns = req.nextUrl.searchParams.get("namespace") ?? "";
+  const ns = req.headers.get("x-vault-namespace") ?? "";
   return NextResponse.json({ onboarding: getConfig<Onboarding>(key(ns)) ?? {} });
 }
 
@@ -45,7 +45,8 @@ export async function PUT(req: NextRequest) {
   } catch {
     return NextResponse.json({ errors: ["invalid JSON"] }, { status: 400 });
   }
-  const ns = typeof body.namespace === "string" ? body.namespace : "";
+  // Scope onboarding state to the caller's namespace (header), not the body.
+  const ns = req.headers.get("x-vault-namespace") ?? "";
   const current = (getConfig<Onboarding>(key(ns)) ?? {}) as Onboarding;
   const merged: Onboarding = {
     ...current,

@@ -14,6 +14,7 @@ import { Disclosure } from "@/components/ui/disclosure";
 import { BaoError } from "@/lib/bao-client";
 import {
   useKvDeleteMetadata,
+  useKvIsV2,
   useKvMetadata,
   useKvSecret,
   useKvVersionAction,
@@ -39,6 +40,8 @@ export function SecretDetail({
   secretPath: string;
   onDeleted: () => void;
 }) {
+  // v1 mounts have no versioning — treat unknown (loading) as v2.
+  const isV2 = useKvIsV2(mount) !== false;
   const meta = useKvMetadata(mount, secretPath);
   const [version, setVersion] = React.useState<number | undefined>(undefined);
   const [editing, setEditing] = React.useState(false);
@@ -195,6 +198,7 @@ export function SecretDetail({
           {/* --- depth on demand: history + advanced, hidden by default --- */}
           {!editing ? (
             <div className="mt-4 flex flex-col gap-3">
+              {isV2 ? (
               <Disclosure label="Version history" count={versions.length}>
                 <ul className="flex flex-col gap-1">
                   {versions.map((v) => {
@@ -230,17 +234,18 @@ export function SecretDetail({
                   })}
                 </ul>
               </Disclosure>
+              ) : null}
 
               <Disclosure label="Advanced & danger zone" tone="danger">
                 <div className="flex flex-col gap-3 text-sm">
-                  {!isDeleted && !isDestroyed ? (
+                  {isV2 && !isDeleted && !isDestroyed ? (
                     <Action
                       title={`Soft-delete v${viewing}`}
                       desc="Hide this version; it can be undeleted later."
                       onClick={() => setConfirm("deleteVersion")}
                     />
                   ) : null}
-                  {!isDestroyed ? (
+                  {isV2 && !isDestroyed ? (
                     <Action
                       title={`Destroy v${viewing}`}
                       desc="Permanently remove this version's data."

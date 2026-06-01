@@ -6,6 +6,18 @@
  */
 const OPENBAO_ADDR = process.env.OPENBAO_ADDR ?? "http://127.0.0.1:8200";
 
+/** Parse a response body as JSON, tolerating empty/non-JSON payloads (HTML
+ *  error pages, proxy responses) by returning null so callers fall back to
+ *  status-based error handling instead of throwing. */
+function parseJsonSafe(text: string) {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 export type OpenBaoError = {
   status: number;
   errors: string[];
@@ -44,7 +56,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   });
 
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  const data = parseJsonSafe(text);
 
   if (!res.ok) {
     const errors: string[] = data?.errors?.length

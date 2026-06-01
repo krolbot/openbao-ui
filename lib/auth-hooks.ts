@@ -28,7 +28,10 @@ export function useRenew() {
     meta: { success: "Token renewed" },
     mutationFn: async () => {
       const res = await fetch("/ui/api/auth/renew", { method: "POST" });
-      if (!res.ok) throw new Error("renew failed");
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? `Renew failed (${res.status})`);
+      }
       return res.json() as Promise<{ ttl: number }>;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["session"] }),

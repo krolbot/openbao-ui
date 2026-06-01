@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ errors: ["not authenticated"] }, { status: 401 });
   }
-  const ns = req.nextUrl.searchParams.get("namespace") ?? "";
+  const ns = req.headers.get("x-vault-namespace") ?? "";
   const stored = getConfig<RoleTemplate[]>(key(ns));
   return NextResponse.json({ templates: stored ?? DEFAULT_ROLE_TEMPLATES });
 }
@@ -40,15 +40,17 @@ export async function PUT(req: NextRequest) {
       { status: 403 },
     );
   }
-  const callerNs = req.headers.get("x-vault-namespace") ?? undefined;
-  if (!(await isOperator(token, callerNs))) {
+  // Namespace comes from the caller's header and gates the operator check, so
+  // templates can only be written for a namespace the caller administers.
+  const ns = req.headers.get("x-vault-namespace") ?? "";
+  if (!(await isOperator(token, ns))) {
     return NextResponse.json(
       { errors: ["forbidden: requires mount-management capability"] },
       { status: 403 },
     );
   }
 
-  let body: { namespace?: string; templates?: RoleTemplate[] };
+  let body: { templates?: RoleTemplate[] };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -60,7 +62,6 @@ export async function PUT(req: NextRequest) {
       { status: 400 },
     );
   }
-  const ns = typeof body.namespace === "string" ? body.namespace : "";
   try {
     setConfig(key(ns), body.templates);
     return NextResponse.json({ templates: body.templates });

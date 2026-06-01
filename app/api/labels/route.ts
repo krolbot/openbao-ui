@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ errors: ["not authenticated"] }, { status: 401 });
   }
-  const namespace = req.nextUrl.searchParams.get("namespace") ?? "";
+  // Namespace is taken from the caller's X-Vault-Namespace header (the app
+  // convention), never the query/body — so it can't be used to read another
+  // namespace's metadata by spoofing a parameter.
+  const namespace = req.headers.get("x-vault-namespace") ?? "";
   const scopeParam = req.nextUrl.searchParams.get("scope");
   if (scopeParam && !isScope(scopeParam)) {
     return NextResponse.json({ errors: ["invalid scope"] }, { status: 400 });
@@ -51,8 +54,10 @@ export async function PUT(req: NextRequest) {
       { status: 403 },
     );
   }
-  const callerNs = req.headers.get("x-vault-namespace") ?? undefined;
-  if (!(await isOperator(token, callerNs))) {
+  // Authorize against — and store under — the caller's own namespace (header),
+  // never a body-supplied namespace, so an operator in A can't write B's labels.
+  const namespace = req.headers.get("x-vault-namespace") ?? "";
+  if (!(await isOperator(token, namespace))) {
     return NextResponse.json(
       { errors: ["forbidden: requires mount-management capability"] },
       { status: 403 },
@@ -66,7 +71,6 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ errors: ["invalid JSON"] }, { status: 400 });
   }
 
-  const namespace = typeof body.namespace === "string" ? body.namespace : "";
   const scope = body.scope;
   const ref = body.ref;
   if (!isScope(scope)) {
