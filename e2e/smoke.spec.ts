@@ -145,7 +145,7 @@ test("guides: generate an integration snippet for an environment", async ({ page
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
-  await page.getByRole("link", { name: "Guides" }).click();
+  await page.getByRole("link", { name: "Guides", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Integration guides" })).toBeVisible();
 
   // the default (token) CLI snippet is wired to the dev `secret` KV mount
