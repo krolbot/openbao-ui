@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { GettingStarted } from "@/components/getting-started";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Disclosure } from "@/components/ui/disclosure";
@@ -38,6 +39,8 @@ export default function OverviewPage() {
         description="Your OpenBao at a glance."
         className="mb-6"
       />
+
+      <GettingStarted />
 
       {/* hero: the two things you check first */}
       <div className="grid gap-4 sm:grid-cols-2">

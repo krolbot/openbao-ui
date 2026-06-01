@@ -195,6 +195,25 @@ test("settings: profile, preferences, namespaces", async ({ page }) => {
   await expect(page.getByRole("button", { name: "New policy" })).toBeVisible();
 });
 
+test("onboarding: getting-started checklist + dismiss persists", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  // checklist renders with derived progress (dev ships a `secret` KV mount,
+  // so at least the "create an environment" step is already complete)
+  await expect(page.getByText("Getting started")).toBeVisible();
+  await expect(page.getByText(/of 5 complete/)).toBeVisible();
+
+  // dismiss it, and the dismissal sticks across a reload (stored in the BFF)
+  await page.getByRole("button", { name: "Dismiss getting started" }).click();
+  await expect(page.getByText("Getting started")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+  await expect(page.getByText("Getting started")).toHaveCount(0);
+});
+
 test("team: create a role and assign it to a member", async ({ page }) => {
   await page.goto("/");
   await page.fill("#token", TOKEN);
