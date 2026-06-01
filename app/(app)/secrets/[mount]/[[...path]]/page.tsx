@@ -1,13 +1,27 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import * as React from "react";
 
-import { KvBrowser } from "@/components/kv/kv-browser";
+import { CubbyholeDashboard } from "@/components/engines/cubbyhole-dashboard";
 import { DatabaseDashboard } from "@/components/engines/database-dashboard";
 import { PkiDashboard } from "@/components/engines/pki-dashboard";
 import { SshDashboard } from "@/components/engines/ssh-dashboard";
 import { TransitDashboard } from "@/components/engines/transit-dashboard";
+import { KvBrowser } from "@/components/kv/kv-browser";
 import { useMounts } from "@/lib/kv";
+
+function Redirect({ to }: { to: string }) {
+  const router = useRouter();
+  React.useEffect(() => {
+    router.replace(to);
+  }, [router, to]);
+  return (
+    <div className="flex h-dvh items-center justify-center text-sm text-muted-foreground">
+      Redirecting…
+    </div>
+  );
+}
 
 export default function MountPage() {
   const params = useParams<{ mount: string; path?: string[] }>();
@@ -18,20 +32,30 @@ export default function MountPage() {
   const info = mounts.data?.[`${mount}/`];
   const type = info?.type;
 
-  // While we don't know the type yet, optimistically assume KV (the common case)
-  // so the browser renders without a flash.
-  if (mounts.isLoading || !type || type === "kv" || type === "generic") {
+  if (mounts.isLoading) {
     return (
-      <div className="h-dvh">
-        <KvBrowser mount={mount} segments={segments} />
+      <div className="flex h-dvh items-center justify-center text-sm text-muted-foreground">
+        Loading…
       </div>
     );
   }
 
-  if (type === "transit") return <div className="h-dvh"><TransitDashboard mount={mount} /></div>;
-  if (type === "pki") return <div className="h-dvh"><PkiDashboard mount={mount} /></div>;
-  if (type === "ssh") return <div className="h-dvh"><SshDashboard mount={mount} /></div>;
-  if (type === "database") return <div className="h-dvh"><DatabaseDashboard mount={mount} /></div>;
+  const wrap = (node: React.ReactNode) => <div className="h-dvh">{node}</div>;
+
+  // these are managed in their own sections rather than browsed as secrets
+  if (type === "identity") return <Redirect to="/access/identity" />;
+  if (type === "system") return <Redirect to="/operations" />;
+
+  if (type === "transit") return wrap(<TransitDashboard mount={mount} />);
+  if (type === "pki") return wrap(<PkiDashboard mount={mount} />);
+  if (type === "ssh") return wrap(<SshDashboard mount={mount} />);
+  if (type === "database") return wrap(<DatabaseDashboard mount={mount} />);
+  if (type === "cubbyhole") return wrap(<CubbyholeDashboard segments={segments} />);
+
+  // kv/generic, or an unknown type reached by a deep link -> assume KV
+  if (!type || type === "kv" || type === "generic") {
+    return wrap(<KvBrowser mount={mount} segments={segments} />);
+  }
 
   return (
     <div className="flex h-dvh items-center justify-center p-8 text-center text-sm text-muted-foreground">

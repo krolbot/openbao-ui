@@ -1,13 +1,22 @@
 "use client";
 
-import { Database, GitCompare, KeyRound, Lock, ScrollText, Terminal } from "lucide-react";
+import { Box, Database, GitCompare, KeyRound, Lock, ScrollText, Settings, Terminal, Users } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { useMounts } from "@/lib/kv";
 
-// engines with a dedicated dashboard (clickable)
-const SUPPORTED = new Set(["kv", "generic", "transit", "pki", "ssh", "database"]);
+// engines with a dedicated dashboard / destination (clickable)
+const SUPPORTED = new Set([
+  "kv", "generic", "transit", "pki", "ssh", "database", "cubbyhole", "identity", "system",
+]);
+
+// some "engines" are managed in their own section rather than browsed
+function destinationFor(type: string, name: string) {
+  if (type === "identity") return "/access/identity";
+  if (type === "system") return "/operations";
+  return `/secrets/${name}`;
+}
 
 function engineMeta(type: string) {
   switch (type) {
@@ -22,6 +31,12 @@ function engineMeta(type: string) {
       return { icon: Terminal, blurb: "SSH certificates" };
     case "database":
       return { icon: Database, blurb: "Dynamic database credentials" };
+    case "cubbyhole":
+      return { icon: Box, blurb: "Per-token private storage" };
+    case "identity":
+      return { icon: Users, blurb: "Entities & groups → Access" };
+    case "system":
+      return { icon: Settings, blurb: "System backend → Operations" };
     default:
       return { icon: Database, blurb: "—" };
   }
@@ -86,7 +101,7 @@ export default function SecretsPage() {
             return (
               <li key={path}>
                 {supported ? (
-                  <Link href={`/secrets/${name}`} className="group block">
+                  <Link href={destinationFor(info.type, name)} className="group block">
                     {inner}
                   </Link>
                 ) : (
