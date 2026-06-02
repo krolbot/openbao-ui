@@ -57,6 +57,30 @@ test("kv lifecycle: create, view, delete a secret", async ({ page }) => {
   await expect(page.getByText("No secret selected")).toBeVisible();
 });
 
+test("kv: deep-link straight to a secret resolves (no 404)", async ({ page }) => {
+  const name = `deeplink/probe-${Date.now()}`;
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  // create a nested secret
+  await page.goto("/ui/secrets/secret");
+  await page.getByRole("button", { name: "New secret" }).click();
+  await page.fill("#secret-name", name);
+  await page.getByPlaceholder("key").first().fill("api_key");
+  await page.getByPlaceholder("value").first().fill("v");
+  await page.getByRole("button", { name: "Create secret" }).click();
+  await expect(page.getByText("version 1")).toBeVisible();
+
+  // navigate directly to the secret's own URL: the browser lists its parent
+  // folder and auto-selects the leaf instead of 404-ing on it
+  await page.goto(`/ui/secrets/secret/${name}`);
+  await expect(page.getByText("Request failed (404)")).toHaveCount(0);
+  await expect(page.getByText(name)).toBeVisible();
+  await expect(page.getByText("version 1")).toBeVisible();
+});
+
 test("access section: policies, capabilities, tokens", async ({ page }) => {
   await page.goto("/");
   await page.fill("#token", TOKEN);

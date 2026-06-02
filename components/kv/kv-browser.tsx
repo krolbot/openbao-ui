@@ -35,10 +35,35 @@ export function KvBrowser({
   mount: string;
   segments: string[];
 }) {
-  const folder = segments.join("/");
+  const fullPath = segments.join("/");
+
+  // The URL path is normally a folder. But a deep link (or pasted URL) can point
+  // straight at a secret (leaf), where listing it as a folder 404s. Detect that
+  // and fall back to listing the parent folder with the leaf auto-selected, so
+  // deep links to a secret "just work" instead of showing an error.
+  const probe = useKvList(mount, fullPath);
+  const looksLikeLeaf =
+    segments.length > 0 &&
+    probe.isError &&
+    probe.error instanceof BaoError &&
+    probe.error.status === 404;
+
+  const folderSegs = looksLikeLeaf ? segments.slice(0, -1) : segments;
+  const folder = folderSegs.join("/");
+  const leafName = looksLikeLeaf ? segments[segments.length - 1] : null;
+
+  // Same query key as `probe` when this isn't a leaf, so there's no extra fetch.
   const list = useKvList(mount, folder);
   const [selected, setSelected] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
+
+  // Auto-select a deep-linked leaf, but only once the parent listing confirms it
+  // really is a secret there (otherwise just show the folder — no false select).
+  React.useEffect(() => {
+    if (leafName && (list.data ?? []).includes(leafName)) {
+      setSelected(join(folder, leafName));
+    }
+  }, [leafName, folder, list.data]);
 
   const keys = list.data ?? [];
   const folders = keys.filter((k) => k.endsWith("/"));
