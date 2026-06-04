@@ -4,7 +4,11 @@
 #   app/          -> the assembled standalone server (.next/standalone + static + public)
 #   entrypoint.sh -> docker/entrypoint.sh
 #   openbao.hcl   -> docker/openbao.hcl
-# The OpenBao binary is copied from the official image (Docker Hub).
+# The OpenBao binary is copied from the official image. Override OPENBAO_IMAGE
+# (a pinned tag/digest) for reproducible builds.
+ARG OPENBAO_IMAGE=openbao/openbao:latest
+FROM ${OPENBAO_IMAGE} AS openbao
+
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
@@ -13,7 +17,7 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0
 
-COPY --from=openbao/openbao:latest /bin/bao /usr/local/bin/bao
+COPY --from=openbao /bin/bao /usr/local/bin/bao
 COPY app/ ./
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY openbao.hcl /bao/config/openbao.hcl

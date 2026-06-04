@@ -7,6 +7,11 @@
 #   - Next proxies /v1/* to OpenBao (see next.config.ts rewrites)
 ###############################################################################
 
+# OpenBao binary source. Override to pin a tag/digest for reproducible builds:
+#   docker build --build-arg OPENBAO_IMAGE=quay.io/openbao/openbao:2.5.4 .
+ARG OPENBAO_IMAGE=quay.io/openbao/openbao:latest
+FROM ${OPENBAO_IMAGE} AS openbao
+
 # --- Stage 1: install dependencies ------------------------------------------
 FROM node:22-alpine AS deps
 RUN corepack enable
@@ -39,8 +44,8 @@ ENV HOSTNAME=0.0.0.0
 # signal handling is delegated to Docker's init (run with `--init` / compose
 # `init: true`). Keeps the image lean and free of build-time network deps.
 
-# Pull the `bao` binary from the official OpenBao image — no separate container.
-COPY --from=quay.io/openbao/openbao:latest /bin/bao /usr/local/bin/bao
+# Pull the `bao` binary from the OpenBao image stage (see OPENBAO_IMAGE above).
+COPY --from=openbao /bin/bao /usr/local/bin/bao
 
 # Next.js standalone server + static assets.
 COPY --from=builder /app/.next/standalone ./

@@ -55,11 +55,13 @@ curl -s -H "X-Vault-Token: $BAO_TOKEN" \\
   "$BAO_ADDR/v1/${dataPath}" | jq '.data.data'`;
 
   const goAuth = approle
-    ? `	client.SetToken("") // cleared; logging in below
-	secretID := &approle.SecretID{FromEnv: "SECRET_ID"}
-	authInfo, err := client.Auth().Login(ctx, mustAppRole(os.Getenv("ROLE_ID"), secretID))
+    ? `	// AppRole login (self-contained; no extra packages)
+	login, err := client.Logical().WriteWithContext(ctx, "auth/approle/login", map[string]interface{}{
+		"role_id":   os.Getenv("ROLE_ID"),
+		"secret_id": os.Getenv("SECRET_ID"),
+	})
 	if err != nil { log.Fatal(err) }
-	_ = authInfo`
+	client.SetToken(login.Auth.ClientToken)`
     : `	client.SetToken(os.Getenv("BAO_TOKEN"))`;
 
   const go = `package main

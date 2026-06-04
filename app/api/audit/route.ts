@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { open, readFile, stat } from "node:fs/promises";
 
 import { NextResponse } from "next/server";
 
@@ -7,6 +7,27 @@ import { openbao } from "@/lib/openbao";
 import { getToken } from "@/lib/session";
 
 const AUDIT_LOG_PATH = process.env.AUDIT_LOG_PATH ?? "/bao/file/audit.log";
+// Cap how much of the (append-only) audit log we read per request, so memory
+// and latency stay bounded as the file grows under the UI's auto-refresh.
+const MAX_READ_BYTES = 512 * 1024;
+
+/** Read the whole file, or just the trailing window for large files. */
+async function readRecentAuditLog(): Promise<string> {
+  const { size } = await stat(AUDIT_LOG_PATH);
+  if (size <= MAX_READ_BYTES) return readFile(AUDIT_LOG_PATH, "utf8");
+
+  const fh = await open(AUDIT_LOG_PATH, "r");
+  try {
+    const buf = Buffer.alloc(MAX_READ_BYTES);
+    await fh.read(buf, 0, MAX_READ_BYTES, size - MAX_READ_BYTES);
+    const text = buf.toString("utf8");
+    // Drop the partial first line so parseAuditLog only sees whole entries.
+    const nl = text.indexOf("\n");
+    return nl >= 0 ? text.slice(nl + 1) : text;
+  } finally {
+    await fh.close();
+  }
+}
 
 /**
  * GET /ui/api/audit — reads the file audit device's log (which lives on the
@@ -36,7 +57,7 @@ export async function GET() {
 
   let content: string;
   try {
-    content = await readFile(AUDIT_LOG_PATH, "utf8");
+    content = await readRecentAuditLog();
   } catch {
     return NextResponse.json({ available: false, records: [] });
   }

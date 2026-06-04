@@ -63,6 +63,7 @@ function TabsList({ className, ...props }: React.ComponentProps<"div">) {
 function TabsTrigger({
   value,
   className,
+  onClick,
   ...props
 }: React.ComponentProps<"button"> & { value: string }) {
   const ctx = useTabs();
@@ -73,7 +74,11 @@ function TabsTrigger({
       role="tab"
       aria-selected={active}
       data-state={active ? "active" : "inactive"}
-      onClick={() => ctx.setValue(value)}
+      // compose, don't clobber: run any caller onClick, then select the tab
+      onClick={(e) => {
+        onClick?.(e);
+        ctx.setValue(value);
+      }}
       className={cn(
         "inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
         active

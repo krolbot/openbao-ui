@@ -49,7 +49,15 @@ export async function baoFetch<T = unknown>({
     if (v !== undefined) params.set(k, String(v));
   }
   const qs = params.toString();
-  const url = `${BASE}/${path.replace(/^\/+/, "")}${qs ? `?${qs}` : ""}`;
+  // Percent-encode each path segment so secret names containing URL delimiters
+  // (#, ?, %, …) reach the BFF intact instead of being parsed as a fragment or
+  // query. Slashes stay as separators (the [...path] route re-encodes upstream).
+  const encodedPath = path
+    .replace(/^\/+/, "")
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+  const url = `${BASE}/${encodedPath}${qs ? `?${qs}` : ""}`;
 
   const headers: Record<string, string> = {};
   if (namespace) headers["X-Vault-Namespace"] = namespace;
