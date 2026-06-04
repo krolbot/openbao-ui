@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, ShieldCheck, User, Users, X } from "lucide-react";
+import { Check, KeyRound, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, User, Users, X } from "lucide-react";
 import * as React from "react";
 
+import { GrantAccessDialog } from "@/components/grant-access-dialog";
 import { colorDot } from "@/components/label-editor";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -10,22 +11,42 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  useAccessRoles,
+  useApplyAccessRole,
+  useDeleteAccessRole,
+  type AccessRole,
+  type EnvSelector,
+} from "@/lib/access-roles";
+import {
   useEntities,
   useEntity,
   useGroupsDetailed,
   useSetGroupMembers,
   type Group,
 } from "@/lib/identity";
+import { useLabels, type LabelMap } from "@/lib/labels";
 import { useApplyRoleTemplate, useRoleTemplates } from "@/lib/roles";
+
+function envSummary(env: EnvSelector): string {
+  if (env.kind === "group") return `env group: ${env.group}`;
+  if (env.kind === "mounts") return env.mounts.join(", ") || "—";
+  return `${env.mount} / ${env.folders.join(", ")}`;
+}
 
 export default function TeamPage() {
   const entities = useEntities();
   const groupsQ = useGroupsDetailed();
   const templates = useRoleTemplates();
   const apply = useApplyRoleTemplate();
+  const accessRoles = useAccessRoles();
+  const { data: labels } = useLabels();
+  const applyScoped = useApplyAccessRole();
+  const delScoped = useDeleteAccessRole();
 
   const [selected, setSelected] = React.useState<string | null>(null);
   const [q, setQ] = React.useState("");
+  const [granting, setGranting] = React.useState(false);
+  const [editingRole, setEditingRole] = React.useState<AccessRole | null>(null);
 
   const groups = groupsQ.data ?? [];
   const groupNames = new Set(groups.map((g) => g.name));
@@ -88,6 +109,70 @@ export default function TeamPage() {
         )}
       </section>
 
+      {/* Scoped access roles — shareable env groups + app-specific groups */}
+      <section className="mb-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <KeyRound className="size-4 text-muted-foreground" /> Scoped access
+          </h2>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setEditingRole(null);
+              setGranting(true);
+            }}
+          >
+            <Plus /> Grant access
+          </Button>
+        </div>
+        {accessRoles.data && accessRoles.data.length > 0 ? (
+          <ul className="divide-y rounded-md border">
+            {accessRoles.data.map((r) => (
+              <li key={r.name} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+                <span className="font-mono">{r.name}</span>
+                <Badge variant="muted" className="capitalize">{r.level}</Badge>
+                {r.app ? (
+                  <Badge variant="primary">app: {r.app}</Badge>
+                ) : (
+                  <Badge variant="outline">all apps</Badge>
+                )}
+                <span className="truncate text-xs text-muted-foreground">{envSummary(r.env)}</span>
+                <div className="ml-auto flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Re-resolve the env group and rewrite the policy"
+                    disabled={applyScoped.isPending}
+                    onClick={() =>
+                      applyScoped.mutate({ role: r, labels: labels as LabelMap, existing: accessRoles.data ?? [] })
+                    }
+                  >
+                    <RefreshCw /> Sync
+                  </Button>
+                  <Button variant="ghost" size="icon" title="Edit" onClick={() => { setEditingRole(r); setGranting(true); }}>
+                    <Pencil />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Remove definition"
+                    onClick={() => delScoped.mutate({ name: r.name, existing: accessRoles.data ?? [] })}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+            No scoped roles yet. <strong>Grant access</strong> creates a policy + group limited to
+            specific environments (or a whole env group) and, optionally, a single application.
+          </p>
+        )}
+      </section>
+
       {/* Members */}
       <section>
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
@@ -145,6 +230,17 @@ export default function TeamPage() {
           </div>
         )}
       </section>
+
+      {granting ? (
+        <GrantAccessDialog
+          existing={accessRoles.data ?? []}
+          initial={editingRole ?? undefined}
+          onClose={() => {
+            setGranting(false);
+            setEditingRole(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -265,6 +265,31 @@ test("team: create a role and assign it to a member", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Remove viewer" })).toBeVisible();
 });
 
+test("team: grant scoped access (app-specific role) with live policy preview", async ({ page }) => {
+  const role = `payments-editor-${Date.now()}`;
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui/access/team");
+  await page.getByRole("button", { name: "Grant access" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByPlaceholder("payments-prod-editor").fill(role);
+  // scope to specific environments (the dev `secret` mount) + the payments app
+  await dialog.getByRole("button", { name: "Specific environments" }).click();
+  await dialog.getByRole("checkbox").first().check();
+  await dialog.getByPlaceholder("payments", { exact: true }).fill("payments");
+
+  // the generated policy preview reflects the selection
+  await expect(dialog.getByText("secret/data/payments/*")).toBeVisible();
+
+  await dialog.getByRole("button", { name: "Grant access", exact: true }).click();
+
+  // the scoped role is now listed (which means policy + group were created)
+  await expect(page.getByText(role)).toBeVisible();
+});
+
 test("auth: Google sign-in wizard renders", async ({ page }) => {
   await page.goto("/");
   await page.fill("#token", TOKEN);

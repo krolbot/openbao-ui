@@ -35,7 +35,9 @@ export function colorDot(color: string | null | undefined): string {
   return (color && DOTS[color]) || "bg-muted-foreground/40";
 }
 
-const ENV_GROUPS = ["", "dev", "staging", "prod"];
+// Free-text now (so operators can define their own groups); these are just
+// quick suggestions surfaced via a datalist.
+const ENV_GROUP_PRESETS = ["dev", "staging", "prod"];
 
 export function LabelEditor({
   open,
@@ -157,24 +159,22 @@ export function LabelEditor({
 
         {showEnvGroup ? (
           <div className="flex flex-col gap-2">
-            <FieldLabel>Environment group</FieldLabel>
-            <div className="flex flex-wrap gap-2">
-              {ENV_GROUPS.map((g) => (
-                <button
-                  key={g || "none"}
-                  type="button"
-                  onClick={() => setEnvGroup(g)}
-                  className={cn(
-                    "rounded-md border px-2.5 py-1 text-sm capitalize",
-                    envGroup === g
-                      ? "border-primary bg-accent"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {g || "none"}
-                </button>
+            <FieldLabel htmlFor="lbl-envgroup">Environment group</FieldLabel>
+            <Input
+              id="lbl-envgroup"
+              value={envGroup}
+              onChange={(e) => setEnvGroup(e.target.value)}
+              list="env-group-presets"
+              placeholder="e.g. prod — or your own; shareable across environments"
+            />
+            <datalist id="env-group-presets">
+              {ENV_GROUP_PRESETS.map((g) => (
+                <option key={g} value={g} />
               ))}
-            </div>
+            </datalist>
+            <p className="text-xs text-muted-foreground">
+              Environments sharing a group can be granted together in Access → Team.
+            </p>
           </div>
         ) : null}
 
