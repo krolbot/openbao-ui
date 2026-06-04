@@ -1,0 +1,62 @@
+import { describe, expect, it } from "vitest";
+
+import { buildAccessPolicy } from "@/lib/access-policy";
+
+describe("buildAccessPolicy", () => {
+  it("scopes an app across a mount-per-env group (editor)", () => {
+    const hcl = buildAccessPolicy({
+      envs: [{ mount: "prod" }, { mount: "dev" }],
+      app: "payments",
+      level: "editor",
+    });
+    expect(hcl).toContain('path "prod/data/payments/*"');
+    expect(hcl).toContain('path "dev/data/payments/*"');
+    expect(hcl).toContain('path "prod/metadata/payments/*"');
+    // can browse the app folder...
+    expect(hcl).toContain('path "prod/metadata/payments"');
+    // ...but NOT the mount root (sibling apps stay hidden)
+    expect(hcl).not.toMatch(/path "prod\/metadata"\s*\{/);
+    // editor data caps include write/delete; metadata stays read/list
+    expect(hcl).toContain('create", "read", "update", "delete", "list"');
+  });
+
+  it("supports the single-mount + env-folder layout", () => {
+    const hcl = buildAccessPolicy({
+      envs: [{ mount: "secret", envPath: "prod" }],
+      app: "payments",
+      level: "viewer",
+    });
+    expect(hcl).toContain('path "secret/data/prod/payments/*"');
+    expect(hcl).toContain('path "secret/metadata/prod/payments/*"');
+    expect(hcl).toContain('path "secret/metadata/prod/payments"');
+    // viewer is read-only
+    expect(hcl).not.toContain("update");
+  });
+
+  it("grants the whole environment when no app is given (env-group grant)", () => {
+    const hcl = buildAccessPolicy({
+      envs: [{ mount: "prod" }],
+      level: "editor",
+    });
+    expect(hcl).toContain('path "prod/data/*"');
+    expect(hcl).toContain('path "prod/metadata/*"');
+    // can list the env root to discover apps
+    expect(hcl).toMatch(/path "prod\/metadata"\s*\{/);
+  });
+
+  it("admin adds sudo on data and full metadata", () => {
+    const hcl = buildAccessPolicy({ envs: [{ mount: "prod" }], app: "x", level: "admin" });
+    expect(hcl).toContain('"sudo"');
+  });
+
+  it("de-duplicates and normalizes slashes", () => {
+    const hcl = buildAccessPolicy({
+      envs: [{ mount: "/prod/" }, { mount: "prod" }],
+      app: "/payments/",
+      level: "viewer",
+    });
+    // both env entries normalize to the same paths -> single block each
+    expect(hcl.match(/path "prod\/data\/payments\/\*"/g)?.length).toBe(1);
+    expect(hcl).not.toContain("//");
+  });
+});
