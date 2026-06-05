@@ -12,6 +12,11 @@ with a live preview of the exact OpenBao policy it generates:
 
 ![Creating a shareable access group](docs/screenshots/walkthrough.gif)
 
+Give your service an **app identity (AppRole)** so it gets a short-lived, scoped
+token in production — the guide is wired to your environment and secret path:
+
+![App identity (AppRole) setup](docs/screenshots/app-identity.gif)
+
 |  |  |
 | --- | --- |
 | ![Overview](docs/screenshots/overview.png)<br/>**Overview** — seal status, token policies, engines | ![Secrets & environment groups](docs/screenshots/secrets.png)<br/>**Secrets** — environments, colors & shareable env groups |
