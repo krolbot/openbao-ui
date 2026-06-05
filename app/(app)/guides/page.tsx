@@ -1,12 +1,15 @@
 "use client";
 
-import { BookOpen } from "lucide-react";
+import { BookOpen, Wand2 } from "lucide-react";
 import * as React from "react";
 
 import { CopyButton } from "@/components/copy-button";
 import { EmptyState } from "@/components/empty-state";
+import { IssueCredentialDialog } from "@/components/issue-credential-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useAppCredentials } from "@/lib/app-credentials";
 import { Input } from "@/components/ui/input";
 import { Label as FieldLabel } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +22,8 @@ import { cn } from "@/lib/utils";
 export default function GuidesPage() {
   const { data: mounts, isLoading } = useMounts();
   const { data: labels } = useLabels();
+  const appCreds = useAppCredentials();
+  const [issuing, setIssuing] = React.useState(false);
 
   // "Environments" are the KV engines you can read secrets from.
   const envs = Object.entries(mounts ?? {})
@@ -136,12 +141,25 @@ export default function GuidesPage() {
                     your service logs in with (no human token in production).
                   </p>
                 </div>
-                <CopyButton value={buildAppRoleSetup({ mount: mount || "secret", path })} label="Copy" />
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setIssuing(true)}>
+                    <Wand2 /> Create it for me
+                  </Button>
+                  <CopyButton value={buildAppRoleSetup({ mount: mount || "secret", path })} label="Copy" />
+                </div>
               </div>
               <pre className="overflow-x-auto p-4 text-xs leading-relaxed">
                 <code>{buildAppRoleSetup({ mount: mount || "secret", path })}</code>
               </pre>
             </div>
+          ) : null}
+
+          {issuing ? (
+            <IssueCredentialDialog
+              existing={appCreds.data ?? []}
+              initialApp={path.split("/")[0] || undefined}
+              onClose={() => setIssuing(false)}
+            />
           ) : null}
 
           {auth === "approle" ? (
