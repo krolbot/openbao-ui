@@ -20,6 +20,8 @@ export const fromBase64 = (b: string): string => {
     const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
     return new TextDecoder().decode(bytes);
   } catch {
-    return atob(b);
+    // Malformed base64 (atob threw, or decoding failed) — don't crash the
+    // caller; hand back the original string as a best-effort fallback.
+    return b;
   }
 };

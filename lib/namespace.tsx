@@ -19,7 +19,14 @@ function readCookie(name: string): string {
   const match = document.cookie.match(
     new RegExp("(?:^|; )" + name + "=([^;]*)"),
   );
-  return match ? decodeURIComponent(match[1]) : "";
+  if (!match) return "";
+  try {
+    // Cookie content is untrusted (user-editable, proxy-mangled): a malformed
+    // %-escape would otherwise throw and break the provider's initial render.
+    return decodeURIComponent(match[1]);
+  } catch {
+    return "";
+  }
 }
 
 export function NamespaceProvider({
