@@ -86,8 +86,38 @@ the shadcn CLI as the UI grows:
 npx shadcn@latest add @coss/<component>
 ```
 
-## Status
+## Features
 
-This is the **infra/skeleton**. Implemented: project scaffold, coss ui wiring,
-single-image Docker setup, and a working login + Overview dashboard. Secret CRUD
-(KV v2), policy/auth-method management, and multi-namespace support come next.
+A full management UI, not just a viewer — everything below is implemented and
+talks to OpenBao live through the proxy:
+
+**Secrets**
+- KV **v2 and v1** — browse, create, and edit, with **version history,
+  one-click rollback**, and soft-delete / destroy
+- **Environments** — friendly names, colors, and shareable **env groups** layered
+  on your KV mounts; create or disable an environment right from the UI
+- **Compare** a secret path across environments side by side
+- Dashboards for **Transit, PKI, SSH, Database, and Cubbyhole**
+
+**Access**
+- **Team** — members (identity entities), role templates, and **scoped access
+  roles**: grant an env group + app at a chosen level with a **live preview of the
+  exact policy**, materialized as a real OpenBao policy + identity group
+- **Auth methods** — enable/configure userpass, LDAP, AppRole, and a guided
+  **Google (OIDC) sign-in wizard**
+- **Identity** (entities & groups), **policies & capabilities**, **tokens**,
+  **leases**, and **MFA**
+
+**Operations**
+- Seal status / health, **quotas**, **plugins**, and an **audit log** viewer
+- Built-in **initialize → save keys → unseal** bootstrap flow for fresh instances
+
+**Settings**
+- Login customization / branding, server config, password policies, preferences,
+  and **multi-namespace** switching
+
+Plus a command palette, dark mode, copy-paste **integration guides** for your
+app, and a first-run onboarding checklist.
+
+> Early but real, and actively developed. Feedback, issues, and PRs are very
+> welcome.
