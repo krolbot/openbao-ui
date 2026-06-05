@@ -5,6 +5,19 @@ built with **Next.js**, **Tailwind CSS**, and **[coss ui](https://coss.com/ui/do
 (copy-paste components on Base UI). The UI and OpenBao ship in a **single Docker
 image**.
 
+## Screenshots
+
+Create a **shareable, app-scoped access group** across an environment group —
+with a live preview of the exact OpenBao policy it generates:
+
+![Creating a shareable access group](docs/screenshots/walkthrough.gif)
+
+|  |  |
+| --- | --- |
+| ![Overview](docs/screenshots/overview.png)<br/>**Overview** — seal status, token policies, engines | ![Secrets & environment groups](docs/screenshots/secrets.png)<br/>**Secrets** — environments, colors & shareable env groups |
+| ![Scoped access builder](docs/screenshots/grant-access.png)<br/>**Grant access** — env group × app × level → policy + group | ![Team](docs/screenshots/team.png)<br/>**Team** — scoped roles + member assignment |
+| ![App identity guide](docs/screenshots/guides-app-identity.png)<br/>**Guides** — app identity (AppRole) setup + snippets | ![Secret detail](docs/screenshots/secret-detail.png)<br/>**Secret** — KV value view |
+
 ## Architecture
 
 Next.js is the single front door (a BFF), and OpenBao runs alongside it inside
