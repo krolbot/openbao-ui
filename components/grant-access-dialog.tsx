@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { EnvScopePicker, Segmented } from "@/components/env-selector";
+import { SharedKeysPicker } from "@/components/shared-keys-picker";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ export function GrantAccessDialog({
   const [level, setLevel] = React.useState<AccessLevel>(initial?.level ?? "editor");
   const [env, setEnv] = React.useState<EnvSelector>(initial?.env ?? { kind: "mounts", mounts: [] });
   const [app, setApp] = React.useState(initial?.app ?? initialApp ?? "");
+  const [shared, setShared] = React.useState<string[]>(initial?.shared ?? []);
   const [error, setError] = React.useState<string | null>(null);
 
   const role: AccessRole = {
@@ -43,6 +45,7 @@ export function GrantAccessDialog({
     level,
     env,
     app: app.trim() || undefined,
+    shared: shared.length ? shared : undefined,
   };
 
   const preview = React.useMemo(
@@ -97,6 +100,8 @@ export function GrantAccessDialog({
         <Field label="Application (optional — folder; blank = all apps)">
           <Input value={app} onChange={(e) => setApp(e.target.value)} className="font-mono" placeholder="payments" />
         </Field>
+
+        <SharedKeysPicker value={shared} onChange={setShared} />
 
         {/* live policy preview */}
         <div className="flex flex-col gap-1">

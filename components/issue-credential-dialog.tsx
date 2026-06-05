@@ -5,6 +5,7 @@ import * as React from "react";
 
 import { CopyButton } from "@/components/copy-button";
 import { EnvScopePicker, Segmented } from "@/components/env-selector";
+import { SharedKeysPicker } from "@/components/shared-keys-picker";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Disclosure } from "@/components/ui/disclosure";
@@ -42,6 +43,7 @@ export function IssueCredentialDialog({
   const [app, setApp] = React.useState(initialApp ?? "");
   const [level, setLevel] = React.useState<AccessLevel>("viewer");
   const [env, setEnv] = React.useState<EnvSelector>({ kind: "mounts", mounts: [] });
+  const [shared, setShared] = React.useState<string[]>([]);
   const [ttl, setTtl] = React.useState("1h");
   const [mount, setMount] = React.useState("approle");
   const [error, setError] = React.useState<string | null>(null);
@@ -50,7 +52,7 @@ export function IssueCredentialDialog({
   const envs = resolveEnvs(env);
   const cleanApp = app.trim();
   const preview = envs.length && cleanApp
-    ? buildAccessPolicy({ envs, app: cleanApp, level })
+    ? buildAccessPolicy({ envs, app: cleanApp, level, shared })
     : "";
   const roleNames = cleanApp ? envs.map((e) => credNames(cleanApp, envIdent(e), level).role) : [];
 
@@ -66,7 +68,7 @@ export function IssueCredentialDialog({
       return;
     }
     try {
-      const res = await issue.mutateAsync({ app: cleanApp, env, level, mount, ttl, existing });
+      const res = await issue.mutateAsync({ app: cleanApp, env, level, mount, ttl, shared: shared.length ? shared : undefined, existing });
       setIssued(res.issued);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to issue credential");
@@ -136,6 +138,8 @@ export function IssueCredentialDialog({
         </div>
 
         <EnvScopePicker initial={undefined} onChange={setEnv} />
+
+        <SharedKeysPicker value={shared} onChange={setShared} />
 
         <Disclosure label="Advanced">
           <div className="grid gap-3 pt-1 sm:grid-cols-2">

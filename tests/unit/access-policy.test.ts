@@ -67,6 +67,22 @@ describe("buildAccessPolicy", () => {
     }
   });
 
+  it("grants shared key bundles read-only alongside the app", () => {
+    const hcl = buildAccessPolicy({
+      envs: [{ mount: "prod" }],
+      app: "backend",
+      level: "editor",
+      shared: ["stripe"],
+    });
+    // the app's own secrets keep the editor caps
+    expect(hcl).toContain('path "prod/data/backend/*"');
+    expect(hcl).toContain('create", "read", "update", "delete", "list"');
+    // the shared bundle is read-only, regardless of the role level
+    expect(hcl).toContain('path "prod/data/_shared/stripe/*"');
+    expect(hcl).toMatch(/path "prod\/data\/_shared\/stripe\/\*" \{\s*capabilities = \["read"\]/);
+    expect(hcl).toContain("shared: stripe");
+  });
+
   it("de-duplicates and normalizes slashes", () => {
     const hcl = buildAccessPolicy({
       envs: [{ mount: "/prod/" }, { mount: "prod" }],

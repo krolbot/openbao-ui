@@ -402,6 +402,26 @@ test("secrets: apps view + register a new app", async ({ page }) => {
   await expect(page.getByText(app, { exact: true })).toBeVisible();
 });
 
+test("secrets: create a shared keys bundle", async ({ page }) => {
+  const name = `shared${Date.now()}`;
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui/secrets/shared");
+  await expect(page.getByRole("heading", { name: "Shared keys" })).toBeVisible();
+  await page.getByRole("button", { name: "New shared keys" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByPlaceholder("stripe", { exact: true }).fill(name);
+  await dialog.getByPlaceholder("STRIPE_API_KEY").fill("API_KEY");
+  // store it in the first available environment
+  await dialog.getByRole("checkbox").first().check();
+  await dialog.getByRole("button", { name: "Create shared keys" }).click();
+  // the bundle now appears in the list
+  await expect(page.getByText(name, { exact: true })).toBeVisible();
+});
+
 test("auth: Google sign-in wizard renders", async ({ page }) => {
   await page.goto("/");
   await page.fill("#token", TOKEN);

@@ -15,6 +15,7 @@ export type AppCredential = {
   env: EnvSelector;
   mount: string; // approle auth mount (default "approle")
   ttl?: string; // token_ttl, e.g. "1h"
+  shared?: string[]; // shared key bundles this app also reads
   roles: { env: string; role: string; policy: string }[]; // materialized per env
   createdAt: number;
 };
@@ -115,6 +116,7 @@ export function useIssueAppCredential() {
       level: AccessLevel;
       mount?: string;
       ttl?: string;
+      shared?: string[];
       existing: AppCredential[];
     }): Promise<{ definition: AppCredential; issued: IssuedCred[] }> => {
       const app = slug(vars.app);
@@ -130,7 +132,7 @@ export function useIssueAppCredential() {
       for (const e of envs) {
         const ident = envIdent(e);
         const { role, policy } = credNames(app, ident, vars.level);
-        const policyHcl = buildAccessPolicy({ envs: [e], app, level: vars.level });
+        const policyHcl = buildAccessPolicy({ envs: [e], app, level: vars.level, shared: vars.shared });
         await baoFetch({
           path: `sys/policies/acl/${policy}`,
           method: "POST",
@@ -163,6 +165,7 @@ export function useIssueAppCredential() {
         env: vars.env,
         mount,
         ttl: vars.ttl,
+        shared: vars.shared?.length ? vars.shared : undefined,
         roles,
         createdAt: Date.now(),
       };

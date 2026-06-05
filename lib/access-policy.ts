@@ -18,7 +18,11 @@ export type AccessScope = {
   envs: EnvTarget[];
   app?: string; // app folder; omit/empty = all apps in the environment
   level: AccessLevel;
+  shared?: string[]; // shared key-bundle names to also grant read on (_shared/<name>)
 };
+
+// Where shared key bundles live within an environment.
+export const SHARED_PREFIX = "_shared";
 
 const strip = (s: string) => s.replace(/^\/+|\/+$/g, "");
 // Strip anything that isn't path-safe (notably `"` and newlines) so the
@@ -67,6 +71,8 @@ export function buildAccessPolicy(scope: AccessScope): string {
     blocks.push(`path "${path}" {\n  capabilities = [${capsList(caps)}]\n}`);
   };
 
+  const shared = (scope.shared ?? []).map((s) => safe(strip(s))).filter(Boolean);
+
   for (const env of scope.envs) {
     const dataPrefix = seg(env.mount, "data", env.envPath);
     const metaPrefix = seg(env.mount, "metadata", env.envPath);
@@ -75,6 +81,12 @@ export function buildAccessPolicy(scope: AccessScope): string {
     // Allow listing the scoped folder node itself so the UI can browse into it
     // (the app folder when app-scoped, or the env root for a whole-env grant).
     add(app ? `${metaPrefix}/${app}` : metaPrefix, ["list"]);
+    // Shared key bundles: read-only, regardless of the role's level — multiple
+    // apps consume the same keys (single source of truth).
+    for (const g of shared) {
+      add(seg(env.mount, "data", env.envPath, SHARED_PREFIX, g) + "/*", ["read"]);
+      add(seg(env.mount, "metadata", env.envPath, SHARED_PREFIX, g) + "/*", ["read", "list"]);
+    }
   }
 
   const where = scope.envs
@@ -82,7 +94,8 @@ export function buildAccessPolicy(scope: AccessScope): string {
     .join(", ");
   const header =
     `# scoped access — level: ${scope.level}` +
-    `${app ? `, app: ${app}` : ", all apps"}\n` +
+    `${app ? `, app: ${app}` : ", all apps"}` +
+    `${shared.length ? `, shared: ${shared.join("+")}` : ""}\n` +
     `# environments: ${where}`;
 
   return `${header}\n${blocks.join("\n")}\n`;
