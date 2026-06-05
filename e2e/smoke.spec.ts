@@ -265,6 +265,25 @@ test("team: create a role and assign it to a member", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Remove viewer" })).toBeVisible();
 });
 
+test("secrets: create a new environment (KV mount + label) in one step", async ({ page }) => {
+  const mount = `billing${Date.now()}`;
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui/secrets");
+  await page.getByRole("button", { name: "New environment" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByPlaceholder("prod", { exact: true }).fill(mount);
+  await dialog.getByPlaceholder("Production").fill("Billing Prod");
+  await dialog.getByPlaceholder("prod — shareable across envs").fill("prod");
+  await dialog.getByRole("button", { name: "Create environment" }).click();
+
+  // the new environment shows up with its friendly name + env-group badge
+  await expect(page.getByText("Billing Prod")).toBeVisible();
+});
+
 test("team: grant scoped access (app-specific role) with live policy preview", async ({ page }) => {
   const role = `payments-editor-${Date.now()}`;
   await page.goto("/");
@@ -278,7 +297,9 @@ test("team: grant scoped access (app-specific role) with live policy preview", a
   await dialog.getByPlaceholder("payments-prod-editor").fill(role);
   // scope to specific environments (the dev `secret` mount) + the payments app
   await dialog.getByRole("button", { name: "Specific environments" }).click();
-  await dialog.getByRole("checkbox").first().check();
+  // select every environment (the dev `secret` mount is always present); the
+  // generated policy keys off real mount paths, not display labels
+  for (const c of await dialog.getByRole("checkbox").all()) await c.check();
   await dialog.getByPlaceholder("payments", { exact: true }).fill("payments");
 
   // the generated policy preview reflects the selection

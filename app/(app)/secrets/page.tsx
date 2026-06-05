@@ -1,14 +1,16 @@
 "use client";
 
-import { Box, Database, GitCompare, KeyRound, Lock, Pencil, ScrollText, Settings, Terminal, Users } from "lucide-react";
+import { Box, Database, GitCompare, KeyRound, Lock, Pencil, Plus, ScrollText, Settings, Terminal, Users } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
 import { colorDot, LabelEditor } from "@/components/label-editor";
+import { NewEnvironmentDialog } from "@/components/new-environment-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCan } from "@/lib/acl";
 import { useMounts } from "@/lib/kv";
 import { labelKey, useLabels } from "@/lib/labels";
 
@@ -51,8 +53,10 @@ function engineMeta(type: string) {
 export default function SecretsPage() {
   const { data: mounts, isLoading, isError } = useMounts();
   const { data: labels } = useLabels();
+  const can = useCan();
   // the mount path (with trailing slash) currently being customized
   const [editing, setEditing] = React.useState<string | null>(null);
+  const [creating, setCreating] = React.useState(false);
 
   return (
     <div className="mx-auto max-w-5xl p-8">
@@ -61,11 +65,18 @@ export default function SecretsPage() {
         description="Secret engines — your environments — mounted in this namespace."
         className="mb-6"
         actions={
-          <Link href="/secrets/compare">
-            <Button variant="outline" size="sm">
-              <GitCompare /> Compare
-            </Button>
-          </Link>
+          <>
+            <Link href="/secrets/compare">
+              <Button variant="outline" size="sm">
+                <GitCompare /> Compare
+              </Button>
+            </Link>
+            {can("sys/mounts") ? (
+              <Button size="sm" onClick={() => setCreating(true)}>
+                <Plus /> New environment
+              </Button>
+            ) : null}
+          </>
         }
       />
 
@@ -174,6 +185,8 @@ export default function SecretsPage() {
           showEnvGroup
         />
       ) : null}
+
+      {creating ? <NewEnvironmentDialog onClose={() => setCreating(false)} /> : null}
     </div>
   );
 }

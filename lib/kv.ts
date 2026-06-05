@@ -77,6 +77,31 @@ export function useMounts() {
   });
 }
 
+/**
+ * Enable a KV secrets engine — i.e. create an "environment". Defaults to v2.
+ * The BFF operator gate rejects this for non-operators; OpenBao enforces the
+ * real `sys/mounts/<path>` capability regardless.
+ */
+export function useEnableSecretEngine() {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  return useMutation({
+    meta: { success: "Environment created", silentError: true },
+    mutationFn: async (vars: { path: string; description?: string; version?: "1" | "2" }) =>
+      baoFetch({
+        path: `sys/mounts/${stripSlash(vars.path)}`,
+        method: "POST",
+        namespace,
+        body: {
+          type: "kv",
+          description: vars.description || undefined,
+          options: { version: vars.version ?? "2" },
+        },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["mounts", namespace] }),
+  });
+}
+
 /** Namespaces (best-effort; empty if not permitted or unsupported). */
 export function useNamespaces() {
   const { namespace } = useNamespace();
