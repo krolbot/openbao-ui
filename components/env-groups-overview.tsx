@@ -3,7 +3,7 @@
 import { Layers } from "lucide-react";
 import Link from "next/link";
 
-import { colorDot } from "@/components/label-editor";
+import { ColorDot } from "@/components/label-editor";
 import { Badge } from "@/components/ui/badge";
 import { useMounts } from "@/lib/kv";
 import { labelKey, useLabels } from "@/lib/labels";
@@ -48,7 +48,7 @@ export function EnvGroupsOverview() {
                   href={`/secrets/${m.mount}`}
                   className="flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-sm hover:bg-accent"
                 >
-                  {m.color ? <span className={`size-2 rounded-full ${colorDot(m.color)}`} /> : null}
+                  {m.color ? <ColorDot color={m.color} className="size-2" /> : null}
                   {m.name}
                 </Link>
               ))}

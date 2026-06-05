@@ -6,7 +6,7 @@ import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EnvGroupsOverview } from "@/components/env-groups-overview";
-import { colorDot, LabelEditor } from "@/components/label-editor";
+import { ColorDot, LabelEditor } from "@/components/label-editor";
 import { NewEnvironmentDialog } from "@/components/new-environment-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -159,7 +159,7 @@ export default function SecretsPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     {lbl?.color ? (
-                      <span className={`size-2.5 shrink-0 rounded-full ${colorDot(lbl.color)}`} />
+                      <ColorDot color={lbl.color} className="size-2.5 shrink-0" />
                     ) : null}
                     <span className={lbl?.label ? "font-medium" : "font-mono font-medium"}>
                       {title}

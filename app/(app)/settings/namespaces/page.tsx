@@ -4,7 +4,7 @@ import { Layers, Pencil, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { colorDot, LabelEditor } from "@/components/label-editor";
+import { ColorDot, LabelEditor } from "@/components/label-editor";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -56,7 +56,7 @@ export default function NamespacesPage() {
             return (
               <li key={ns.path} className="flex items-center gap-3 px-3 py-2 text-sm">
                 {lbl?.color ? (
-                  <span className={`size-2.5 shrink-0 rounded-full ${colorDot(lbl.color)}`} />
+                  <ColorDot color={lbl.color} className="size-2.5 shrink-0" />
                 ) : (
                   <Layers className="size-4 text-muted-foreground" />
                 )}

@@ -2,14 +2,13 @@
 
 import * as React from "react";
 
-import { colorDot, LABEL_COLORS } from "@/components/label-editor";
+import { ColorPicker, LABEL_COLORS } from "@/components/label-editor";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label as FieldLabel } from "@/components/ui/label";
 import { useEnableSecretEngine } from "@/lib/kv";
 import { useSetLabel } from "@/lib/labels";
-import { cn } from "@/lib/utils";
 
 const ENV_GROUP_PRESETS = ["dev", "staging", "prod"];
 const stripSlash = (s: string) => s.replace(/^\/+|\/+$/g, "");
@@ -102,22 +101,7 @@ export function NewEnvironmentDialog({ onClose }: { onClose: () => void }) {
 
         <div className="flex flex-col gap-2">
           <FieldLabel>Color</FieldLabel>
-          <div className="flex flex-wrap gap-2">
-            {LABEL_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-label={c}
-                onClick={() => setColor(c)}
-                className={cn(
-                  "flex size-7 items-center justify-center rounded-full border-2",
-                  color === c ? "border-foreground" : "border-transparent",
-                )}
-              >
-                <span className={cn("size-4 rounded-full", colorDot(c))} />
-              </button>
-            ))}
-          </div>
+          <ColorPicker value={color} onChange={setColor} />
         </div>
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
