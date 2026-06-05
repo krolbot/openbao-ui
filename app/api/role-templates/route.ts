@@ -7,10 +7,12 @@ import { getToken } from "@/lib/session";
 import { isOperator } from "@/lib/ui-admin";
 
 /**
- * Role-template catalog (the Team view's standard roles), per namespace.
- *   GET /ui/api/role-templates?namespace=<ns>  — authenticated; seeded with the
- *       built-in defaults until an operator customizes them.
- *   PUT /ui/api/role-templates                  — operator only; saves the list.
+ * Role-template catalog (the Team view's standard roles), per namespace. The
+ * namespace is always taken from the caller's `X-Vault-Namespace` header (never
+ * a query/body param), so it can't be spoofed to read/write another namespace.
+ *   GET /ui/api/role-templates  — authenticated; seeded with the built-in
+ *       defaults until an operator customizes them.
+ *   PUT /ui/api/role-templates  — operator only; saves the list.
  *
  * Templates are non-secret presentation/config data; materializing one into an
  * actual policy + group happens client-side via the OpenBao API.

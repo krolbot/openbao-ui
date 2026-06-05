@@ -12,9 +12,19 @@ export function LogoutButton() {
 
   async function logout() {
     setLoading(true);
-    await fetch("/ui/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+    try {
+      const res = await fetch("/ui/api/auth/logout", { method: "POST" });
+      if (!res.ok) {
+        // Non-2xx: don't navigate away on a failed logout — re-enable the
+        // button so the user can retry instead of being stuck disabled.
+        setLoading(false);
+        return;
+      }
+      router.push("/login");
+      router.refresh();
+    } catch {
+      setLoading(false);
+    }
   }
 
   return (

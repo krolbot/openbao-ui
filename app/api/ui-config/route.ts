@@ -10,7 +10,12 @@ import { isOperator } from "@/lib/ui-admin";
  *   GET  /ui/api/ui-config  — PUBLIC, returns only whitelisted presentation
  *                             fields so the unauthenticated login page can brand
  *                             itself. Never returns secrets.
- *   PUT  /ui/api/ui-config  — operator only; shallow-merges into the "ui" blob.
+ *   PUT  /ui/api/ui-config  — root-namespace operator only. This is a single
+ *                             server-global blob (one CONFIG_KEY, not
+ *                             per-namespace), so authorization is checked in the
+ *                             root namespace regardless of the caller's current
+ *                             namespace — a child-namespace operator must not be
+ *                             able to change server-wide login branding.
  *
  * Phase 1 establishes the route + store; Phase 2 (login customization) fills in
  * branding/default-method/ordering on top of it.
@@ -49,8 +54,9 @@ export async function PUT(req: NextRequest) {
       { status: 403 },
     );
   }
-  const callerNs = req.headers.get("x-vault-namespace") ?? undefined;
-  if (!(await isOperator(token, callerNs))) {
+  // Global setting → require mount-management capability in the ROOT namespace,
+  // not whatever namespace the caller is currently browsing.
+  if (!(await isOperator(token, ""))) {
     return NextResponse.json(
       { errors: ["forbidden: requires mount-management capability"] },
       { status: 403 },

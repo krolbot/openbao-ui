@@ -21,7 +21,9 @@ wait_for_openbao() {
   echo "[entrypoint] waiting for OpenBao at ${OPENBAO_ADDR} ..."
   i=0
   # Use Node's built-in fetch for the readiness probe (no wget/curl needed).
-  until node -e "fetch('${OPENBAO_ADDR}/v1/sys/seal-status').then(()=>process.exit(0)).catch(()=>process.exit(1))" 2>/dev/null; do
+  # Require a 2xx (`r.ok`) — a 404/503/etc. means OpenBao isn't actually ready
+  # yet, so keep waiting instead of starting Next.js against an erroring server.
+  until node -e "fetch('${OPENBAO_ADDR}/v1/sys/seal-status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" 2>/dev/null; do
     i=$((i + 1))
     if [ "$i" -gt 60 ]; then
       echo "[entrypoint] OpenBao did not become ready in time" >&2

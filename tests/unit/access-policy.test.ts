@@ -49,6 +49,24 @@ describe("buildAccessPolicy", () => {
     expect(hcl).toContain('"sudo"');
   });
 
+  it("sanitizes unsafe characters so HCL can't be injected", () => {
+    const hcl = buildAccessPolicy({
+      // a malicious app name trying to break out of the quoted string and add
+      // its own path block
+      envs: [{ mount: "prod" }],
+      app: 'x" {\n  capabilities = ["sudo"]\n}\npath "secret/*',
+      level: "viewer",
+    });
+    // the quote/newline payload is stripped — no stray quotes or extra blocks
+    expect(hcl).not.toContain('secret/*');
+    expect(hcl).not.toContain('"sudo"');
+    // every `path "..."` line is well-formed (no unescaped quote inside)
+    for (const m of hcl.matchAll(/path "([^"]*)"/g)) {
+      expect(m[1]).not.toContain('"');
+      expect(m[1]).not.toContain("\n");
+    }
+  });
+
   it("de-duplicates and normalizes slashes", () => {
     const hcl = buildAccessPolicy({
       envs: [{ mount: "/prod/" }, { mount: "prod" }],

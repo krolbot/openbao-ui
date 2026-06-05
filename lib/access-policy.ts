@@ -21,9 +21,15 @@ export type AccessScope = {
 };
 
 const strip = (s: string) => s.replace(/^\/+|\/+$/g, "");
+// Strip anything that isn't path-safe (notably `"` and newlines) so the
+// user-editable mount / env / app names can't break out of the quoted HCL
+// string and inject extra `path` blocks. The UI already constrains these, but
+// the generator must never emit unsafe HCL. Slashes are kept — they're path
+// separators (nested mounts).
+const safe = (s: string) => s.replace(/[^A-Za-z0-9._\-/]/g, "");
 const seg = (...parts: (string | undefined)[]) =>
   parts
-    .map((p) => strip(p ?? ""))
+    .map((p) => safe(strip(p ?? "")))
     .filter(Boolean)
     .join("/");
 
@@ -50,7 +56,7 @@ const capsList = (c: string[]) => c.map((x) => `"${x}"`).join(", ");
  * whole environment.
  */
 export function buildAccessPolicy(scope: AccessScope): string {
-  const app = scope.app ? strip(scope.app) : "";
+  const app = scope.app ? safe(strip(scope.app)) : "";
   const tail = app ? `${app}/*` : `*`;
 
   const blocks: string[] = [];
