@@ -158,7 +158,8 @@ function LoginForm() {
 
       const payload: Record<string, unknown> = { method };
       if (method === "token") payload.token = f.token;
-      if (method === "userpass") Object.assign(payload, { username: f.username, password: f.password });
+      if (method === "userpass")
+        Object.assign(payload, { username: f.username, password: f.password, mount: f.mount || undefined });
       if (method === "ldap")
         Object.assign(payload, { username: f.username, password: f.password, mount: f.mount || undefined });
       if (method === "approle")
@@ -217,11 +218,9 @@ function LoginForm() {
 
       {method === "userpass" || method === "ldap" ? (
         <>
-          {method === "ldap" ? (
-            <Field label="Mount path">
-              <Input placeholder="ldap" value={f.mount} onChange={set("mount")} className="font-mono" />
-            </Field>
-          ) : null}
+          <Field label="Mount path (optional)">
+            <Input placeholder={method} value={f.mount} onChange={set("mount")} className="font-mono" />
+          </Field>
           <Field label="Username">
             <Input id="username" autoComplete="username" value={f.username} onChange={set("username")} />
           </Field>

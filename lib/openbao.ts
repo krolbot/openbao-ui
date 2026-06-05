@@ -112,8 +112,8 @@ export const openbao = {
     request<TokenLookup>("auth/token/lookup-self", { token }),
 
   /** Username/password login -> returns a client token in `auth`. */
-  userpassLogin: (username: string, password: string) =>
-    request<AuthResponse>(`auth/userpass/login/${encodeURIComponent(username)}`, {
+  userpassLogin: (mount: string, username: string, password: string) =>
+    request<AuthResponse>(`auth/${mount}/login/${encodeURIComponent(username)}`, {
       method: "POST",
       body: { password },
     }),

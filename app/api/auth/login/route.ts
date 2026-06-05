@@ -6,7 +6,7 @@ import { setToken } from "@/lib/session";
 
 type LoginBody =
   | { method: "token"; token: string }
-  | { method: "userpass"; username: string; password: string }
+  | { method: "userpass"; mount?: string; username: string; password: string }
   | { method: "ldap"; mount?: string; username: string; password: string }
   | { method: "approle"; mount?: string; roleId: string; secretId: string };
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       const res =
         body.method === "ldap"
           ? await openbao.ldapLogin(body.mount || "ldap", username, password)
-          : await openbao.userpassLogin(username, password);
+          : await openbao.userpassLogin(body.mount || "userpass", username, password);
       await setToken(res.auth.client_token, res.auth.lease_duration);
       return NextResponse.json({
         displayName: username,
