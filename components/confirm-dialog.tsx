@@ -21,6 +21,7 @@ export function ConfirmDialog({
   confirmText,
   destructive = true,
   pending = false,
+  warning,
   error,
 }: {
   open: boolean;
@@ -32,6 +33,7 @@ export function ConfirmDialog({
   confirmText?: string;
   destructive?: boolean;
   pending?: boolean;
+  warning?: React.ReactNode;
   error?: string | null;
 }) {
   const [typed, setTyped] = React.useState("");
@@ -44,6 +46,11 @@ export function ConfirmDialog({
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogHeader title={title} description={description} onClose={onClose} />
+      {warning ? (
+        <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+          {warning}
+        </div>
+      ) : null}
       {confirmText ? (
         <div className="mb-4 flex flex-col gap-2">
           <Label htmlFor="confirm-input">

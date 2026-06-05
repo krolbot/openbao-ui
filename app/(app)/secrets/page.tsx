@@ -5,12 +5,14 @@ import Link from "next/link";
 import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { EnvGroupsOverview } from "@/components/env-groups-overview";
 import { colorDot, LabelEditor } from "@/components/label-editor";
 import { NewEnvironmentDialog } from "@/components/new-environment-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { resolveEnvs, useAccessRoles } from "@/lib/access-roles";
 import { useCan } from "@/lib/acl";
 import { useDisableSecretEngine, useMounts } from "@/lib/kv";
 import { labelKey, useClearLabel, useLabels } from "@/lib/labels";
@@ -55,14 +57,26 @@ export default function SecretsPage() {
   const { data: mounts, isLoading, isError } = useMounts();
   const { data: labels } = useLabels();
   const can = useCan();
+  const accessRoles = useAccessRoles();
   const disable = useDisableSecretEngine();
   const clearLabel = useClearLabel();
+
   // the mount path (with trailing slash) currently being customized
   const [editing, setEditing] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
   // the mount path (with trailing slash) pending disable, + any error
   const [deleting, setDeleting] = React.useState<string | null>(null);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
+
+  // Scoped roles whose policy targets the environment pending disable — their
+  // grants would dangle at a deleted mount, so we surface them in the confirm.
+  const affectedRoles = React.useMemo(() => {
+    if (!deleting) return [];
+    const m = deleting.replace(/\/$/, "");
+    return (accessRoles.data ?? []).filter((r) =>
+      resolveEnvs(r.env, labels).some((t) => t.mount === m),
+    );
+  }, [deleting, accessRoles.data, labels]);
 
   // Deep-link from the onboarding "Create an environment" step (/secrets?new=1).
   React.useEffect(() => {
@@ -102,6 +116,8 @@ export default function SecretsPage() {
           </>
         }
       />
+
+      <EnvGroupsOverview />
 
       {isLoading ? (
         <ul className="grid gap-3 sm:grid-cols-2">
@@ -236,6 +252,16 @@ export default function SecretsPage() {
         confirmText={deleting?.replace(/\/$/, "")}
         confirmLabel="Disable environment"
         pending={disable.isPending || clearLabel.isPending}
+        warning={
+          affectedRoles.length > 0 ? (
+            <>
+              <strong>{affectedRoles.length} scoped role{affectedRoles.length === 1 ? "" : "s"}</strong>{" "}
+              still grant access to this environment:{" "}
+              <span className="font-mono">{affectedRoles.map((r) => r.name).join(", ")}</span>.
+              Their policies will keep pointing at a deleted mount until you edit or remove them in Access → Team.
+            </>
+          ) : null
+        }
         error={deleteError}
       />
     </div>
