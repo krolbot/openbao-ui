@@ -368,6 +368,48 @@ test("team: grant scoped access (app-specific role) with live policy preview", a
   await expect(page.getByText(role)).toBeVisible();
 });
 
+test("access: issue an app credential reveals role_id/secret_id", async ({ page }) => {
+  const app = `svc${Date.now()}`;
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui/access/app-credentials");
+  await page.getByRole("button", { name: "Issue credential" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByPlaceholder("payments").fill(app);
+  // scope to a specific environment (the dev `secret` mount is always present)
+  await dialog.getByRole("button", { name: "Specific environments" }).click();
+  await dialog.getByRole("checkbox").first().check();
+  await dialog.getByRole("button", { name: "Issue credential" }).click();
+
+  // reveal step shows the one-time credentials
+  await expect(page.getByText("Credentials issued")).toBeVisible();
+  await expect(page.getByText("role_id").first()).toBeVisible();
+  await expect(page.getByText("secret_id").first()).toBeVisible();
+  await page.getByRole("button", { name: "Done" }).click();
+  // the credential is now listed
+  await expect(page.getByText(app, { exact: true })).toBeVisible();
+});
+
+test("secrets: apps view + register a new app", async ({ page }) => {
+  const app = `app${Date.now()}`;
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui/secrets/apps");
+  await expect(page.getByRole("heading", { name: "Apps" })).toBeVisible();
+  await page.getByRole("button", { name: "New app" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByPlaceholder("payments", { exact: true }).fill(app);
+  await dialog.getByRole("button", { name: "Create app" }).click();
+  // the registered app shows up in the grid
+  await expect(page.getByText(app, { exact: true })).toBeVisible();
+});
+
 test("auth: Google sign-in wizard renders", async ({ page }) => {
   await page.goto("/");
   await page.fill("#token", TOKEN);

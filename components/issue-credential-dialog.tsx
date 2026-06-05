@@ -87,8 +87,11 @@ export function IssueCredentialDialog({
         <div className="flex flex-col gap-4">
           <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
             <ShieldAlert className="mt-0.5 size-4 shrink-0" />
-            Store these in your app&apos;s secret manager / CI now. The
-            <code className="mx-1">secret_id</code> can&apos;t be retrieved again — rotate it later if lost.
+            <span>
+              Save these in your app&apos;s secret manager or CI now — a{" "}
+              <code className="rounded bg-amber-500/15 px-1 py-0.5">secret_id</code> can&apos;t be
+              retrieved again (rotate it if it&apos;s lost).
+            </span>
           </div>
           {issued.map((c) => (
             <div key={c.role} className="rounded-md border bg-card p-3">
