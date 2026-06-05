@@ -277,11 +277,9 @@ test("secrets: create a new environment (KV mount + label) in one step", async (
   const dialog = page.getByRole("dialog");
   await dialog.getByPlaceholder("prod", { exact: true }).fill(mount);
   await dialog.getByPlaceholder("Production").fill("Billing Prod");
-  await dialog.getByPlaceholder("prod — shareable across envs").fill("prod");
   await dialog.getByRole("button", { name: "Create environment" }).click();
 
-  // the new environment shows up with its friendly name (.first(): the name also
-  // appears in the env-groups overview now that it carries a group)
+  // the new environment shows up with its friendly name
   await expect(page.getByText("Billing Prod").first()).toBeVisible();
 
   // disable it again (typed-confirm) — full lifecycle
@@ -302,35 +300,29 @@ test("secrets: ?new=1 deep-link auto-opens the New environment dialog", async ({
   await expect(page.getByRole("heading", { name: "New environment" })).toBeVisible();
 });
 
-test("secrets: env-groups overview + disable warns about referencing roles", async ({ page }) => {
+test("secrets: disabling an env warns about referencing scoped roles", async ({ page }) => {
   const env = `warnenv${Date.now()}`;
-  const group = `wg${Date.now()}`;
   const role = `warnrole${Date.now()}`;
   await page.goto("/");
   await page.fill("#token", TOKEN);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
-  // create an environment tagged into a group
+  // create an environment
   await page.goto("/ui/secrets");
   await page.getByRole("button", { name: "New environment" }).click();
   let dialog = page.getByRole("dialog");
   await dialog.getByPlaceholder("prod", { exact: true }).fill(env);
-  await dialog.getByPlaceholder("prod — shareable across envs").fill(group);
   await dialog.getByRole("button", { name: "Create environment" }).click();
+  await expect(page.getByText(`${env}/`).first()).toBeVisible();
 
-  // the env-groups overview surfaces the group → its member environment
-  // (.first(): the group name also shows as a badge on the mount card)
-  await expect(page.getByRole("heading", { name: "Environment groups" })).toBeVisible();
-  await expect(page.getByText(group, { exact: true }).first()).toBeVisible();
-
-  // grant a scoped role over that whole group
+  // grant a scoped role over that specific environment
   await page.goto("/ui/access/team");
   await page.getByRole("button", { name: "Grant access" }).click();
   dialog = page.getByRole("dialog");
   await dialog.getByPlaceholder("payments-prod-editor").fill(role);
-  await dialog.getByRole("button", { name: "By env group" }).click();
-  await dialog.locator("select").selectOption({ label: group });
+  await dialog.getByRole("button", { name: "Specific environments" }).click();
+  await dialog.locator("label").filter({ hasText: env }).locator("input").check();
   await dialog.getByRole("button", { name: "Grant access", exact: true }).click();
   await expect(page.getByText(role)).toBeVisible();
 

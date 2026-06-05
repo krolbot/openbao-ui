@@ -14,7 +14,6 @@ import {
   type AccessRole,
   type EnvSelector,
 } from "@/lib/access-roles";
-import { useLabels, type LabelMap } from "@/lib/labels";
 
 const LEVELS: AccessLevel[] = ["viewer", "editor", "admin"];
 
@@ -29,13 +28,12 @@ export function GrantAccessDialog({
   initialApp?: string;
   onClose: () => void;
 }) {
-  const { data: labels } = useLabels();
   const apply = useApplyAccessRole();
 
   const [name, setName] = React.useState(initial?.name ?? "");
   const [description, setDescription] = React.useState(initial?.description ?? "");
   const [level, setLevel] = React.useState<AccessLevel>(initial?.level ?? "editor");
-  const [env, setEnv] = React.useState<EnvSelector>(initial?.env ?? { kind: "group", group: "" });
+  const [env, setEnv] = React.useState<EnvSelector>(initial?.env ?? { kind: "mounts", mounts: [] });
   const [app, setApp] = React.useState(initial?.app ?? initialApp ?? "");
   const [error, setError] = React.useState<string | null>(null);
 
@@ -48,9 +46,8 @@ export function GrantAccessDialog({
   };
 
   const preview = React.useMemo(
-    () => previewPolicy(role, labels as LabelMap),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(role), labels],
+    () => previewPolicy(role),
+    [JSON.stringify(role)],
   );
   // how many environments the selection resolves to (the preview's path count)
   const envCount = (preview.match(/\/data\//g) ?? []).length;
@@ -67,7 +64,7 @@ export function GrantAccessDialog({
       return;
     }
     try {
-      await apply.mutateAsync({ role, labels: labels as LabelMap, existing });
+      await apply.mutateAsync({ role, existing });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to apply");

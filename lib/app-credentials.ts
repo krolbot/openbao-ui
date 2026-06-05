@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildAccessPolicy, type AccessLevel, type EnvTarget } from "@/lib/access-policy";
 import { resolveEnvs, type EnvSelector } from "@/lib/access-roles";
 import { baoFetch, BaoError } from "@/lib/bao-client";
-import { type LabelMap } from "@/lib/labels";
 import { useNamespace } from "@/lib/namespace";
 
 // A machine identity for an app: one AppRole per environment (isolated), each
@@ -116,13 +115,12 @@ export function useIssueAppCredential() {
       level: AccessLevel;
       mount?: string;
       ttl?: string;
-      labels: LabelMap | undefined;
       existing: AppCredential[];
     }): Promise<{ definition: AppCredential; issued: IssuedCred[] }> => {
       const app = slug(vars.app);
       if (!app) throw new Error("App name is required");
       const mount = stripSlash(vars.mount || "approle");
-      const envs = resolveEnvs(vars.env, vars.labels);
+      const envs = resolveEnvs(vars.env);
       if (envs.length === 0) throw new Error("No environments matched this selection");
 
       await ensureApprole(mount, namespace);

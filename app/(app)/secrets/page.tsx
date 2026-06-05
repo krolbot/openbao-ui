@@ -5,7 +5,6 @@ import Link from "next/link";
 import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { EnvGroupsOverview } from "@/components/env-groups-overview";
 import { ColorDot, LabelEditor } from "@/components/label-editor";
 import { NewEnvironmentDialog } from "@/components/new-environment-dialog";
 import { PageHeader } from "@/components/page-header";
@@ -74,7 +73,7 @@ export default function SecretsPage() {
     if (!deleting) return [];
     const m = deleting.replace(/\/$/, "");
     return (accessRoles.data ?? []).filter((r) =>
-      resolveEnvs(r.env, labels).some((t) => t.mount === m),
+      resolveEnvs(r.env).some((t) => t.mount === m),
     );
   }, [deleting, accessRoles.data, labels]);
 
@@ -122,8 +121,6 @@ export default function SecretsPage() {
         }
       />
 
-      <EnvGroupsOverview />
-
       {isLoading ? (
         <ul className="grid gap-3 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -169,9 +166,6 @@ export default function SecretsPage() {
                     <span className={lbl?.label ? "font-medium" : "font-mono font-medium"}>
                       {title}
                     </span>
-                    {lbl?.env_group ? (
-                      <Badge variant="primary" className="capitalize">{lbl.env_group}</Badge>
-                    ) : null}
                     <Badge variant="muted">
                       {info.type}
                       {version ? ` v${version}` : ""}
@@ -242,7 +236,6 @@ export default function SecretsPage() {
           refPath={editing}
           current={labels?.[labelKey("environment", editing)]}
           nativeName={editing}
-          showEnvGroup
         />
       ) : null}
 

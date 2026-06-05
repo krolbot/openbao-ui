@@ -109,9 +109,6 @@ export default function AppsPage() {
                 ) : (
                   <span className="text-xs text-muted-foreground">No secrets yet</span>
                 )}
-                {a.groups.map((g) => (
-                  <Badge key={g} variant="primary" className="capitalize">{g}</Badge>
-                ))}
               </div>
 
               <div className="mt-auto flex flex-wrap gap-2 border-t pt-3">

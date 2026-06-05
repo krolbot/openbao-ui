@@ -12,7 +12,6 @@ export type AppInfo = {
   app: string; // folder name, e.g. "payments"
   label?: Label; // application-scope label (friendly name / color / owner)
   envs: string[]; // KV mounts the app folder exists in
-  groups: string[]; // env groups those mounts belong to
 };
 
 type KvMount = { mount: string; v2: boolean };
@@ -61,19 +60,17 @@ export function useApps() {
 
   const apps = React.useMemo<AppInfo[]>(() => {
     const byApp = discovery.data ?? {};
-    const groupOf = (m: string) => labels?.[labelKey("environment", `${m}/`)]?.env_group ?? null;
     const map = new Map<string, AppInfo>();
     for (const [app, envs] of Object.entries(byApp)) {
       map.set(app, {
         app,
         label: labels?.[labelKey("application", app)],
         envs: envs.slice().sort(),
-        groups: Array.from(new Set(envs.map(groupOf).filter(Boolean) as string[])).sort(),
       });
     }
     for (const l of Object.values(labels ?? {})) {
       if (l.scope === "application" && !map.has(l.ref)) {
-        map.set(l.ref, { app: l.ref, label: l, envs: [], groups: [] });
+        map.set(l.ref, { app: l.ref, label: l, envs: [] });
       }
     }
     return Array.from(map.values()).sort((a, b) => a.app.localeCompare(b.app));

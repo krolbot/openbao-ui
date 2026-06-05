@@ -9,12 +9,11 @@ import {
   type EnvTarget,
 } from "@/lib/access-policy";
 import { baoFetch, BaoError } from "@/lib/bao-client";
-import { labelKey, type LabelMap } from "@/lib/labels";
 import { useNamespace } from "@/lib/namespace";
 
-// How a scoped role selects its environments.
+// How a scoped role selects its environments — explicit multi-select of mounts,
+// or env folders within a single mount.
 export type EnvSelector =
-  | { kind: "group"; group: string } // every KV mount tagged env_group = group
   | { kind: "mounts"; mounts: string[] } // explicit KV mounts (no trailing slash)
   | { kind: "folders"; mount: string; folders: string[] }; // single-mount: env folders
 
@@ -29,27 +28,17 @@ export type AccessRole = {
 const stripSlash = (s: string) => s.replace(/^\/+|\/+$/g, "");
 
 /** Resolve an env selector to concrete environment targets for the generator. */
-export function resolveEnvs(env: EnvSelector, labels: LabelMap | undefined): EnvTarget[] {
+export function resolveEnvs(env: EnvSelector): EnvTarget[] {
   if (env.kind === "mounts") {
     return env.mounts.map((m) => ({ mount: stripSlash(m) }));
   }
-  if (env.kind === "folders") {
-    return env.folders.map((f) => ({ mount: stripSlash(env.mount), envPath: stripSlash(f) }));
-  }
-  // kind === "group": every environment label whose env_group matches.
-  const out: EnvTarget[] = [];
-  for (const l of Object.values(labels ?? {})) {
-    if (l.scope === "environment" && l.env_group === env.group) {
-      out.push({ mount: stripSlash(l.ref) });
-    }
-  }
-  return out;
+  return env.folders.map((f) => ({ mount: stripSlash(env.mount), envPath: stripSlash(f) }));
 }
 
 /** Preview the policy a role would generate (pure; for the builder + display). */
-export function previewPolicy(role: AccessRole, labels: LabelMap | undefined): string {
+export function previewPolicy(role: AccessRole): string {
   const scope: AccessScope = {
-    envs: resolveEnvs(role.env, labels),
+    envs: resolveEnvs(role.env),
     app: role.app,
     level: role.level,
   };
@@ -100,9 +89,9 @@ export function useApplyAccessRole() {
   const save = useSaveAccessRoles();
   return useMutation({
     meta: { success: "Access role applied", silentError: true },
-    mutationFn: async (vars: { role: AccessRole; labels: LabelMap | undefined; existing: AccessRole[] }) => {
-      const { role, labels, existing } = vars;
-      const envs = resolveEnvs(role.env, labels);
+    mutationFn: async (vars: { role: AccessRole; existing: AccessRole[] }) => {
+      const { role, existing } = vars;
+      const envs = resolveEnvs(role.env);
       if (envs.length === 0) throw new Error("No environments matched this selection");
       const policy = buildAccessPolicy({ envs, app: role.app, level: role.level });
 

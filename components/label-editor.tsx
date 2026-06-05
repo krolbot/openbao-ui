@@ -135,10 +135,6 @@ export function ColorPicker({
   );
 }
 
-// Free-text now (so operators can define their own groups); these are just
-// quick suggestions surfaced via a datalist.
-const ENV_GROUP_PRESETS = ["dev", "staging", "prod"];
-
 export function LabelEditor({
   open,
   onClose,
@@ -147,7 +143,6 @@ export function LabelEditor({
   current,
   ns,
   nativeName,
-  showEnvGroup = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -157,13 +152,11 @@ export function LabelEditor({
   /** namespace to store under; pass "" for workspace (namespace) labels */
   ns?: string;
   nativeName: string;
-  showEnvGroup?: boolean;
 }) {
   const set = useSetLabel(ns);
   const [label, setLabel] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [color, setColor] = React.useState("");
-  const [envGroup, setEnvGroup] = React.useState("");
 
   // Re-seed the form whenever the dialog opens for a (possibly different) ref.
   React.useEffect(() => {
@@ -171,7 +164,6 @@ export function LabelEditor({
     setLabel(current?.label ?? "");
     setDescription(current?.description ?? "");
     setColor(current?.color ?? "");
-    setEnvGroup(current?.env_group ?? "");
   }, [open, current]);
 
   if (!open) return null;
@@ -199,7 +191,6 @@ export function LabelEditor({
             label,
             description,
             color,
-            env_group: showEnvGroup ? envGroup : undefined,
           });
           onClose();
         }}
@@ -229,27 +220,6 @@ export function LabelEditor({
           <FieldLabel>Color</FieldLabel>
           <ColorPicker value={color} onChange={setColor} allowNone />
         </div>
-
-        {showEnvGroup ? (
-          <div className="flex flex-col gap-2">
-            <FieldLabel htmlFor="lbl-envgroup">Environment group</FieldLabel>
-            <Input
-              id="lbl-envgroup"
-              value={envGroup}
-              onChange={(e) => setEnvGroup(e.target.value)}
-              list="env-group-presets"
-              placeholder="e.g. prod — or your own; shareable across environments"
-            />
-            <datalist id="env-group-presets">
-              {ENV_GROUP_PRESETS.map((g) => (
-                <option key={g} value={g} />
-              ))}
-            </datalist>
-            <p className="text-xs text-muted-foreground">
-              Environments sharing a group can be granted together in Access → Team.
-            </p>
-          </div>
-        ) : null}
 
         <div className="flex justify-end gap-2 border-t pt-4">
           <Button type="button" variant="outline" onClick={onClose}>

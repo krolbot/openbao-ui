@@ -24,11 +24,9 @@ import {
   useSetGroupMembers,
   type Group,
 } from "@/lib/identity";
-import { useLabels, type LabelMap } from "@/lib/labels";
 import { useApplyRoleTemplate, useRoleTemplates } from "@/lib/roles";
 
 function envSummary(env: EnvSelector): string {
-  if (env.kind === "group") return `env group: ${env.group}`;
   if (env.kind === "mounts") return env.mounts.join(", ") || "—";
   return `${env.mount} / ${env.folders.join(", ")}`;
 }
@@ -39,7 +37,6 @@ export default function TeamPage() {
   const templates = useRoleTemplates();
   const apply = useApplyRoleTemplate();
   const accessRoles = useAccessRoles();
-  const { data: labels } = useLabels();
   const applyScoped = useApplyAccessRole();
   const delScoped = useDeleteAccessRole();
 
@@ -142,10 +139,10 @@ export default function TeamPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    title="Re-resolve the env group and rewrite the policy"
+                    title="Re-apply: rewrite the policy + group"
                     disabled={applyScoped.isPending}
                     onClick={() =>
-                      applyScoped.mutate({ role: r, labels: labels as LabelMap, existing: accessRoles.data ?? [] })
+                      applyScoped.mutate({ role: r, existing: accessRoles.data ?? [] })
                     }
                   >
                     <RefreshCw /> Sync
@@ -168,7 +165,7 @@ export default function TeamPage() {
         ) : (
           <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
             No scoped roles yet. <strong>Grant access</strong> creates a policy + group limited to
-            specific environments (or a whole env group) and, optionally, a single application.
+            the chosen environments and, optionally, a single application.
           </p>
         )}
       </section>

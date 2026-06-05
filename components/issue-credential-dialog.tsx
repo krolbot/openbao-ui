@@ -20,7 +20,6 @@ import {
 } from "@/lib/app-credentials";
 import { resolveEnvs, type EnvSelector } from "@/lib/access-roles";
 import { buildSnippets } from "@/lib/guides";
-import { useLabels, type LabelMap } from "@/lib/labels";
 
 const LEVELS: AccessLevel[] = ["viewer", "editor"];
 
@@ -38,18 +37,17 @@ export function IssueCredentialDialog({
   initialApp?: string;
   onClose: () => void;
 }) {
-  const { data: labels } = useLabels();
   const issue = useIssueAppCredential();
 
   const [app, setApp] = React.useState(initialApp ?? "");
   const [level, setLevel] = React.useState<AccessLevel>("viewer");
-  const [env, setEnv] = React.useState<EnvSelector>({ kind: "group", group: "" });
+  const [env, setEnv] = React.useState<EnvSelector>({ kind: "mounts", mounts: [] });
   const [ttl, setTtl] = React.useState("1h");
   const [mount, setMount] = React.useState("approle");
   const [error, setError] = React.useState<string | null>(null);
   const [issued, setIssued] = React.useState<IssuedCred[] | null>(null);
 
-  const envs = resolveEnvs(env, labels as LabelMap);
+  const envs = resolveEnvs(env);
   const cleanApp = app.trim();
   const preview = envs.length && cleanApp
     ? buildAccessPolicy({ envs, app: cleanApp, level })
@@ -68,7 +66,7 @@ export function IssueCredentialDialog({
       return;
     }
     try {
-      const res = await issue.mutateAsync({ app: cleanApp, env, level, mount, ttl, labels: labels as LabelMap, existing });
+      const res = await issue.mutateAsync({ app: cleanApp, env, level, mount, ttl, existing });
       setIssued(res.issued);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to issue credential");
