@@ -282,6 +282,23 @@ test("secrets: create a new environment (KV mount + label) in one step", async (
 
   // the new environment shows up with its friendly name + env-group badge
   await expect(page.getByText("Billing Prod")).toBeVisible();
+
+  // disable it again (typed-confirm) — full lifecycle
+  await page.getByLabel(`Disable ${mount}/`).click();
+  const confirm = page.getByRole("dialog");
+  await confirm.locator("#confirm-input").fill(mount);
+  await confirm.getByRole("button", { name: "Disable environment" }).click();
+  await expect(page.getByText("Billing Prod")).toBeHidden();
+});
+
+test("secrets: ?new=1 deep-link auto-opens the New environment dialog", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui/secrets?new=1");
+  await expect(page.getByRole("heading", { name: "New environment" })).toBeVisible();
 });
 
 test("team: grant scoped access (app-specific role) with live policy preview", async ({ page }) => {

@@ -80,8 +80,8 @@ export function GettingStarted() {
       id: "environment",
       title: "Create an environment",
       description: "Enable a KV secrets engine for dev / staging / prod.",
-      href: "/secrets",
-      action: "Go to Secrets",
+      href: "/secrets?new=1",
+      action: "Create environment",
       done: kvMounts.length > 0,
     },
     {

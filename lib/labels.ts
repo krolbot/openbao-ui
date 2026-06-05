@@ -84,3 +84,25 @@ export function useSetLabel(ns?: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["ui-labels", target] }),
   });
 }
+
+/**
+ * Remove a label entirely (e.g. when its underlying mount is disabled) so a
+ * future recreate starts fresh. Reuses the PUT endpoint — sending no fields
+ * deletes the row server-side. Silent (no success toast).
+ */
+export function useClearLabel(ns?: string) {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  const target = ns ?? namespace;
+  return useMutation({
+    meta: { silentError: true },
+    mutationFn: async (input: { scope: LabelScope; ref: string }) => {
+      await fetch(`/ui/api/labels`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-vault-namespace": target },
+        body: JSON.stringify({ namespace: target, scope: input.scope, ref: input.ref }),
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["ui-labels", target] }),
+  });
+}

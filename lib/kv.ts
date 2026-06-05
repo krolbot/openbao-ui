@@ -102,6 +102,25 @@ export function useEnableSecretEngine() {
   });
 }
 
+/**
+ * Disable a secrets engine — destroys the mount and ALL secrets in it. The
+ * caller is responsible for confirming intent (typed-confirm) before invoking.
+ */
+export function useDisableSecretEngine() {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  return useMutation({
+    meta: { success: "Environment disabled", silentError: true },
+    mutationFn: async (path: string) =>
+      baoFetch({
+        path: `sys/mounts/${stripSlash(path)}`,
+        method: "DELETE",
+        namespace,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["mounts", namespace] }),
+  });
+}
+
 /** Namespaces (best-effort; empty if not permitted or unsupported). */
 export function useNamespaces() {
   const { namespace } = useNamespace();

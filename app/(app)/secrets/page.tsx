@@ -1,9 +1,10 @@
 "use client";
 
-import { Box, Database, GitCompare, KeyRound, Lock, Pencil, Plus, ScrollText, Settings, Terminal, Users } from "lucide-react";
+import { Box, Database, GitCompare, KeyRound, Lock, Pencil, Plus, ScrollText, Settings, Terminal, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { colorDot, LabelEditor } from "@/components/label-editor";
 import { NewEnvironmentDialog } from "@/components/new-environment-dialog";
 import { PageHeader } from "@/components/page-header";
@@ -11,8 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCan } from "@/lib/acl";
-import { useMounts } from "@/lib/kv";
-import { labelKey, useLabels } from "@/lib/labels";
+import { useDisableSecretEngine, useMounts } from "@/lib/kv";
+import { labelKey, useClearLabel, useLabels } from "@/lib/labels";
 
 // engines with a dedicated dashboard / destination (clickable)
 const SUPPORTED = new Set([
@@ -54,9 +55,31 @@ export default function SecretsPage() {
   const { data: mounts, isLoading, isError } = useMounts();
   const { data: labels } = useLabels();
   const can = useCan();
+  const disable = useDisableSecretEngine();
+  const clearLabel = useClearLabel();
   // the mount path (with trailing slash) currently being customized
   const [editing, setEditing] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
+  // the mount path (with trailing slash) pending disable, + any error
+  const [deleting, setDeleting] = React.useState<string | null>(null);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+
+  // Deep-link from the onboarding "Create an environment" step (/secrets?new=1).
+  React.useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("new")) setCreating(true);
+  }, []);
+
+  async function confirmDisable() {
+    if (!deleting) return;
+    setDeleteError(null);
+    try {
+      await disable.mutateAsync(deleting.replace(/\/$/, ""));
+      await clearLabel.mutateAsync({ scope: "environment", ref: deleting }).catch(() => {});
+      setDeleting(null);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to disable");
+    }
+  }
 
   return (
     <div className="mx-auto max-w-5xl p-8">
@@ -158,15 +181,31 @@ export default function SecretsPage() {
                   <div className="opacity-60">{inner}</div>
                 )}
                 {isEnv ? (
-                  <button
-                    type="button"
-                    onClick={() => setEditing(path)}
-                    title="Customize display"
-                    aria-label={`Customize ${path}`}
-                    className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover/card:opacity-100"
-                  >
-                    <Pencil className="size-3.5" />
-                  </button>
+                  <div className="absolute right-2 top-2 flex gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/card:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(path)}
+                      title="Customize display"
+                      aria-label={`Customize ${path}`}
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    {can("sys/mounts") ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteError(null);
+                          setDeleting(path);
+                        }}
+                        title="Disable environment"
+                        aria-label={`Disable ${path}`}
+                        className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
                 ) : null}
               </li>
             );
@@ -187,6 +226,18 @@ export default function SecretsPage() {
       ) : null}
 
       {creating ? <NewEnvironmentDialog onClose={() => setCreating(false)} /> : null}
+
+      <ConfirmDialog
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={confirmDisable}
+        title="Disable environment"
+        description={`This permanently deletes the "${deleting?.replace(/\/$/, "")}" engine and ALL secrets stored in it. This cannot be undone.`}
+        confirmText={deleting?.replace(/\/$/, "")}
+        confirmLabel="Disable environment"
+        pending={disable.isPending || clearLabel.isPending}
+        error={deleteError}
+      />
     </div>
   );
 }
