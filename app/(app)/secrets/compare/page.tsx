@@ -45,12 +45,18 @@ export default function ComparePage() {
     queryFn: async (): Promise<Column[]> => {
       return Promise.all(
         query!.mounts.map(async (mount) => {
+          // KV v2 reads at <mount>/data/... with fields under res.data.data;
+          // KV v1 / generic read at <mount>/... with fields under res.data.
+          const v2 = mounts.data?.[`${mount}/`]?.options?.version === "2";
           try {
-            const res = await baoFetch<{ data: { data: Record<string, unknown> } }>({
-              path: `${mount}/data/${query!.path}`,
+            const res = await baoFetch<{
+              data: (Record<string, unknown> & { data?: Record<string, unknown> }) | null;
+            }>({
+              path: v2 ? `${mount}/data/${query!.path}` : `${mount}/${query!.path}`,
               namespace,
             });
-            return { mount, data: res.data?.data ?? {}, missing: false };
+            const fields = v2 ? (res.data?.data ?? {}) : (res.data ?? {});
+            return { mount, data: fields, missing: false };
           } catch {
             return { mount, data: null, missing: true };
           }

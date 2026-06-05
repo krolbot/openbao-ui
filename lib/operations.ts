@@ -20,7 +20,15 @@ export function useHealth() {
   const { namespace } = useNamespace();
   return useQuery({
     queryKey: ["health", namespace],
-    queryFn: () => baoFetch<Health>({ path: "sys/health", namespace }),
+    // standbyok/perfstandbyok make /sys/health return 200 (not 429/473) for an
+    // unsealed standby, so baoFetch doesn't throw and the page renders the real
+    // mode + seal status for HA standby nodes.
+    queryFn: () =>
+      baoFetch<Health>({
+        path: "sys/health",
+        namespace,
+        query: { standbyok: "true", perfstandbyok: "true" },
+      }),
     refetchInterval: 15_000,
   });
 }
