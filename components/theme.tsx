@@ -24,12 +24,11 @@ const systemDark = () =>
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = React.useState<ThemePref>("system");
-  const [resolved, setResolved] = React.useState<"light" | "dark">(() =>
-    typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark")
-      ? "dark"
-      : "light",
-  );
+  // Start deterministic ("light") so the server render and the first client
+  // render match — otherwise a stored "dark" theme makes the toggle icon (and
+  // any resolved-theme-dependent UI) hydrate mismatched (React #418). The effect
+  // below immediately corrects it from the inline-applied <html> class.
+  const [resolved, setResolved] = React.useState<"light" | "dark">("light");
 
   // load the stored preference once on mount
   React.useEffect(() => {
