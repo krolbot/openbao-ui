@@ -1,0 +1,153 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import {
+  buildAccessPolicy,
+  type AccessLevel,
+  type AccessScope,
+  type EnvTarget,
+} from "@/lib/access-policy";
+import { baoFetch, BaoError } from "@/lib/bao-client";
+import { labelKey, type LabelMap } from "@/lib/labels";
+import { useNamespace } from "@/lib/namespace";
+
+// How a scoped role selects its environments.
+export type EnvSelector =
+  | { kind: "group"; group: string } // every KV mount tagged env_group = group
+  | { kind: "mounts"; mounts: string[] } // explicit KV mounts (no trailing slash)
+  | { kind: "folders"; mount: string; folders: string[] }; // single-mount: env folders
+
+export type AccessRole = {
+  name: string; // also the policy + identity group name
+  description?: string;
+  level: AccessLevel;
+  env: EnvSelector;
+  app?: string; // omit/empty = all apps in the environment(s)
+};
+
+const stripSlash = (s: string) => s.replace(/^\/+|\/+$/g, "");
+
+/** Resolve an env selector to concrete environment targets for the generator. */
+export function resolveEnvs(env: EnvSelector, labels: LabelMap | undefined): EnvTarget[] {
+  if (env.kind === "mounts") {
+    return env.mounts.map((m) => ({ mount: stripSlash(m) }));
+  }
+  if (env.kind === "folders") {
+    return env.folders.map((f) => ({ mount: stripSlash(env.mount), envPath: stripSlash(f) }));
+  }
+  // kind === "group": every environment label whose env_group matches.
+  const out: EnvTarget[] = [];
+  for (const l of Object.values(labels ?? {})) {
+    if (l.scope === "environment" && l.env_group === env.group) {
+      out.push({ mount: stripSlash(l.ref) });
+    }
+  }
+  return out;
+}
+
+/** Preview the policy a role would generate (pure; for the builder + display). */
+export function previewPolicy(role: AccessRole, labels: LabelMap | undefined): string {
+  const scope: AccessScope = {
+    envs: resolveEnvs(role.env, labels),
+    app: role.app,
+    level: role.level,
+  };
+  return buildAccessPolicy(scope);
+}
+
+// --- store (definitions live in the BFF so they're editable / re-syncable) ---
+
+export function useAccessRoles() {
+  const { namespace } = useNamespace();
+  return useQuery({
+    queryKey: ["access-roles", namespace],
+    queryFn: async (): Promise<AccessRole[]> => {
+      const res = await fetch(`/ui/api/access-roles`, {
+        headers: { "x-vault-namespace": namespace },
+      });
+      if (!res.ok) return [];
+      const data = (await res.json()) as { roles?: AccessRole[] };
+      return data.roles ?? [];
+    },
+  });
+}
+
+function useSaveAccessRoles() {
+  const { namespace } = useNamespace();
+  return async (roles: AccessRole[]) => {
+    const res = await fetch(`/ui/api/access-roles`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-vault-namespace": namespace },
+      body: JSON.stringify({ roles }),
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { errors?: string[] };
+      throw new Error(data.errors?.[0] ?? `Request failed (${res.status})`);
+    }
+  };
+}
+
+/**
+ * Materialize a scoped role into OpenBao (write the generated policy + upsert
+ * the identity group that carries it) AND save/replace its definition in the
+ * store. Re-running for an existing name is how "Sync grants" re-resolves the
+ * env group after membership changes. Idempotent.
+ */
+export function useApplyAccessRole() {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  const save = useSaveAccessRoles();
+  return useMutation({
+    meta: { success: "Access role applied", silentError: true },
+    mutationFn: async (vars: { role: AccessRole; labels: LabelMap | undefined; existing: AccessRole[] }) => {
+      const { role, labels, existing } = vars;
+      const envs = resolveEnvs(role.env, labels);
+      if (envs.length === 0) throw new Error("No environments matched this selection");
+      const policy = buildAccessPolicy({ envs, app: role.app, level: role.level });
+
+      await baoFetch({
+        path: `sys/policies/acl/${role.name}`,
+        method: "POST",
+        namespace,
+        body: { policy },
+      });
+      try {
+        await baoFetch({
+          path: "identity/group",
+          method: "POST",
+          namespace,
+          body: { name: role.name, type: "internal", policies: [role.name] },
+        });
+      } catch (err) {
+        if (!(err instanceof BaoError && /already exists/i.test(err.errors.join(" ")))) {
+          throw err;
+        }
+      }
+
+      const next = [...existing.filter((r) => r.name !== role.name), role];
+      await save(next);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["access-roles", namespace] });
+      qc.invalidateQueries({ queryKey: ["groups", namespace] });
+      qc.invalidateQueries({ queryKey: ["groups-detailed", namespace] });
+      qc.invalidateQueries({ queryKey: ["policies", namespace] });
+    },
+  });
+}
+
+/** Remove a scoped role's definition from the store (its policy/group remain,
+ *  manageable under Access — we don't delete a group members may still hold). */
+export function useDeleteAccessRole() {
+  const qc = useQueryClient();
+  const { namespace } = useNamespace();
+  const save = useSaveAccessRoles();
+  return useMutation({
+    meta: { success: "Access role removed" },
+    mutationFn: async (vars: { name: string; existing: AccessRole[] }) => {
+      await save(vars.existing.filter((r) => r.name !== vars.name));
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["access-roles", namespace] }),
+  });
+}

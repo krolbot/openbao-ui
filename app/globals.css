@@ -1,0 +1,163 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * OpenBao brand palette (https://openbao.org/community/policies/brand):
+ *   primary #336d5c · secondary green #87d6be · shadow green #79c0ab
+ *   bao creams #fdfccf #fdd0a4 #dab991 · dark #091a28
+ * Components consume these via the @theme mapping below.
+ */
+:root {
+  --radius: 0.625rem;
+  --background: #ffffff;
+  --foreground: #091a28;
+  --card: #ffffff;
+  --card-foreground: #091a28;
+  --popover: #ffffff;
+  --popover-foreground: #091a28;
+  --primary: #336d5c;
+  --primary-foreground: #ffffff;
+  --secondary: #e8f3ef;
+  --secondary-foreground: #244c40;
+  --muted: #f1f5f3;
+  --muted-foreground: #5c6f69;
+  --accent: #e3f1eb;
+  --accent-foreground: #244c40;
+  --destructive: #dc2626;
+  --border: #e3e9e6;
+  --input: #e3e9e6;
+  --ring: #336d5c;
+  --sidebar: #f6faf8;
+  --sidebar-foreground: #091a28;
+  --sidebar-primary: #336d5c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e3f1eb;
+  --sidebar-accent-foreground: #244c40;
+  --sidebar-border: #e3e9e6;
+  --sidebar-ring: #336d5c;
+}
+
+.dark {
+  --background: #091a28;
+  --foreground: #eef3f1;
+  --card: #0e2433;
+  --card-foreground: #eef3f1;
+  --popover: #0e2433;
+  --popover-foreground: #eef3f1;
+  --primary: #87d6be;
+  --primary-foreground: #08221b;
+  --secondary: #16313e;
+  --secondary-foreground: #e7f1ee;
+  --muted: #16313e;
+  --muted-foreground: #9fb4ae;
+  --accent: #1a3a47;
+  --accent-foreground: #e7f1ee;
+  --destructive: #f87171;
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: #79c0ab;
+  --sidebar: #0b2030;
+  --sidebar-foreground: #eef3f1;
+  --sidebar-primary: #87d6be;
+  --sidebar-primary-foreground: #08221b;
+  --sidebar-accent: #16313e;
+  --sidebar-accent-foreground: #e7f1ee;
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: #79c0ab;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, "SFMono-Regular", monospace;
+}
+
+@theme inline {
+  /* refined elevation scale used across cards/menus/dialogs */
+  --shadow-xs: 0 1px 2px 0 rgb(9 26 40 / 0.04);
+  --shadow-sm: 0 1px 2px 0 rgb(9 26 40 / 0.05), 0 1px 3px 0 rgb(9 26 40 / 0.05);
+  --shadow-md: 0 2px 4px -1px rgb(9 26 40 / 0.06), 0 4px 12px -2px rgb(9 26 40 / 0.08);
+  --shadow-lg: 0 8px 24px -4px rgb(9 26 40 / 0.12), 0 2px 6px -2px rgb(9 26 40 / 0.08);
+  --shadow-xl: 0 24px 48px -12px rgb(9 26 40 / 0.22);
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* brand-tinted text selection */
+::selection {
+  background: color-mix(in oklab, var(--color-primary) 22%, transparent);
+}
+
+/* thin, unobtrusive scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-foreground) 18%, transparent) transparent;
+}
+*::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--color-foreground) 16%, transparent);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--color-foreground) 30%, transparent);
+  background-clip: padding-box;
+}
+
+/* respect reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

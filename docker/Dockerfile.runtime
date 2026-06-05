@@ -1,0 +1,33 @@
+# Runtime-only image built from a pre-built Next.js standalone output.
+# Used by CI (and any flow that builds the app on the host first) to avoid an
+# in-container `pnpm install`. The build context must contain:
+#   app/          -> the assembled standalone server (.next/standalone + static + public)
+#   entrypoint.sh -> docker/entrypoint.sh
+#   openbao.hcl   -> docker/openbao.hcl
+# The OpenBao binary is copied from the official image. Override OPENBAO_IMAGE
+# (a pinned tag/digest) for reproducible builds.
+ARG OPENBAO_IMAGE=openbao/openbao:latest
+FROM ${OPENBAO_IMAGE} AS openbao
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    OPENBAO_ADDR=http://127.0.0.1:8200 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+
+COPY --from=openbao /bin/bao /usr/local/bin/bao
+COPY app/ ./
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY openbao.hcl /bao/config/openbao.hcl
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+  && mkdir -p /bao/file \
+  && addgroup -S bao && adduser -S bao -G bao \
+  && chown -R bao:bao /bao /app
+
+ENV BAO_DEV=1
+ENV BAO_DEV_ROOT_TOKEN_ID=root
+EXPOSE 3000
+USER bao
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
