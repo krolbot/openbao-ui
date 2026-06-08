@@ -1,11 +1,15 @@
 "use client";
 
-import { ChevronRight, FileKey2, Folder } from "lucide-react";
+import { ChevronRight, FileKey2, Folder, Plus, X } from "lucide-react";
 import * as React from "react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useKvList } from "@/lib/kv";
 import { cn } from "@/lib/utils";
+
+const normalizePath = (s: string) => s.trim().replace(/^\/+|\/+$/g, "");
 
 /**
  * Lazy KV-tree multi-select. Browses ONE environment's secret tree and reports
@@ -26,8 +30,14 @@ export function PathPicker({
   onChange: (paths: string[]) => void;
   label?: string;
 }) {
+  const [custom, setCustom] = React.useState("");
   const toggle = (p: string) =>
     onChange(value.includes(p) ? value.filter((x) => x !== p) : [...value, p]);
+  const addCustom = () => {
+    const p = normalizePath(custom);
+    if (p && !value.includes(p)) onChange([...value, p]);
+    setCustom("");
+  };
 
   // A path is "covered" when "*" or an ancestor "<a>/*" is already selected.
   const covered = (p: string) =>
@@ -55,10 +65,33 @@ export function PathPicker({
           <Children ctx={ctx} rel="" depth={1} />
         </div>
       )}
+
+      {mount ? (
+        <div className="flex items-center gap-2">
+          <Input
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); addCustom(); }
+            }}
+            className="h-8 font-mono text-sm"
+            placeholder="add a path or glob — e.g. billing/* (need not exist yet)"
+          />
+          <Button type="button" variant="outline" size="sm" onClick={addCustom} disabled={!custom.trim()}>
+            <Plus /> Add
+          </Button>
+        </div>
+      ) : null}
+
       {value.length ? (
         <div className="flex flex-wrap gap-1.5">
           {value.map((p) => (
-            <span key={p} className="rounded-md border bg-muted/40 px-2 py-0.5 font-mono text-xs">{p}</span>
+            <span key={p} className="flex items-center gap-1 rounded-md border bg-muted/40 py-0.5 pl-2 pr-1 font-mono text-xs">
+              {p}
+              <button type="button" onClick={() => toggle(p)} title="Remove" className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground">
+                <X className="size-3" />
+              </button>
+            </span>
           ))}
         </div>
       ) : (
