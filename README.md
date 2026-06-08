@@ -31,16 +31,21 @@ the same image, reachable only on loopback:
 ```
                  ┌───────────────────────── single Docker image ─────────────────────────┐
    browser  ───► │  Next.js (:3000)                                                         │
-                 │   ├── /ui/*       → React pages (coss ui)                                 │
-                 │   ├── /ui/api/*   → BFF route handlers (auth, session)                    │
+                 │   ├── /ui2/*      → React pages (coss ui — this app)                      │
+                 │   ├── /ui2/api/*  → BFF route handlers (auth, session)                    │
+                 │   ├── /ui/*       → rewrite/proxy ─────────►  OpenBao stock UI            │
                  │   └── /v1/*       → rewrite/proxy ─────────►  OpenBao (127.0.0.1:8200)    │
                  └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **`/ui/*`** — application pages (served under `basePath: /ui`).
-- **`/ui/api/*`** — custom API routes. Login validates credentials against
+- **`/ui2/*`** — this application's pages (served under `basePath: /ui2`). The
+  root `/` redirects here.
+- **`/ui2/api/*`** — custom API routes. Login validates credentials against
   OpenBao server-side and stores the token in an **httpOnly cookie** — it never
   reaches client JS.
+- **`/ui/*`** — OpenBao's own **stock UI**, proxied through untouched so both
+  UIs coexist (`ui = true` in `docker/openbao.hcl`; auto-on in dev mode). A
+  **Classic UI** link in the sidebar points here.
 - **`/v1/*`** — transparently proxied to the embedded OpenBao
   (`next.config.ts` → `rewrites()`).
 
@@ -61,7 +66,7 @@ pnpm install
 pnpm dev                                        # http://localhost:3000
 ```
 
-Open <http://localhost:3000> → you'll be redirected to `/ui/login`. Sign in with
+Open <http://localhost:3000> → you'll be redirected to `/ui2/login`. Sign in with
 the **Token** method using `root`. The Overview page shows live seal status, your
 token's policies, and the enabled secret engines; **Secrets** lets you browse KV
 engines, create/edit secrets, view version history, and roll back — all fetched
@@ -72,7 +77,7 @@ Config via env (see `.env.example`): `OPENBAO_ADDR`, `BAO_COOKIE_NAME`.
 ### Architecture detail: client data flow
 
 Interactive pages use **TanStack Query** against an **authenticated BFF proxy**
-(`/ui/api/bao/<path>`). The proxy injects the httpOnly token and the
+(`/ui2/api/bao/<path>`). The proxy injects the httpOnly token and the
 `X-Vault-Namespace` header server-side, so the token is never exposed to client
 JS while the UI still gets live, cacheable reads/writes.
 
@@ -90,7 +95,7 @@ Then visit <http://localhost:3000> and log in with token `root`.
 - **Dev mode** (`BAO_DEV=1`, default): in-memory, auto-unsealed, fixed root
   token — great for trying it out, **not** for production.
 - **Non-dev** (`BAO_DEV=0`): boots from `docker/openbao.hcl` (file storage). The
-  instance starts **sealed/uninitialized** — the UI detects this at `/ui/login`
+  instance starts **sealed/uninitialized** — the UI detects this at `/ui2/login`
   and walks you through the built-in **initialize → save keys → unseal** flow.
   Mount a volume at `/bao/file` to persist storage.
 

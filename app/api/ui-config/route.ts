@@ -7,10 +7,10 @@ import { isOperator } from "@/lib/ui-admin";
 
 /**
  * UI configuration (branding + login customization).
- *   GET  /ui/api/ui-config  — PUBLIC, returns only whitelisted presentation
+ *   GET  /ui2/api/ui-config  — PUBLIC, returns only whitelisted presentation
  *                             fields so the unauthenticated login page can brand
  *                             itself. Never returns secrets.
- *   PUT  /ui/api/ui-config  — root-namespace operator only. This is a single
+ *   PUT  /ui2/api/ui-config  — root-namespace operator only. This is a single
  *                             server-global blob (one CONFIG_KEY, not
  *                             per-namespace), so authorization is checked in the
  *                             root namespace regardless of the caller's current

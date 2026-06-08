@@ -1,10 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { API_BASE } from "@/lib/base-path";
 
 import { useNamespace } from "@/lib/namespace";
 
-// Client-side access to the BFF "nicer naming" label store (/ui/api/labels).
+// Client-side access to the BFF "nicer naming" label store (/ui2/api/labels).
 // workspace = namespace, environment = mount, application = path. Labels are
 // presentation-only; the underlying OpenBao paths are never renamed.
 
@@ -36,7 +37,7 @@ export function useLabels(ns?: string) {
     queryKey: ["ui-labels", target],
     queryFn: async (): Promise<LabelMap> => {
       const res = await fetch(
-        `/ui/api/labels?namespace=${encodeURIComponent(target)}`,
+        `${API_BASE}/labels?namespace=${encodeURIComponent(target)}`,
         { headers: { "x-vault-namespace": target } },
       );
       if (!res.ok) return {};
@@ -65,7 +66,7 @@ export function useSetLabel(ns?: string) {
   return useMutation({
     meta: { success: "Saved" },
     mutationFn: async (input: SetLabelInput) => {
-      const res = await fetch(`/ui/api/labels`, {
+      const res = await fetch(`${API_BASE}/labels`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -97,7 +98,7 @@ export function useClearLabel(ns?: string) {
   return useMutation({
     meta: { silentError: true },
     mutationFn: async (input: { scope: LabelScope; ref: string }) => {
-      await fetch(`/ui/api/labels`, {
+      await fetch(`${API_BASE}/labels`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "x-vault-namespace": target },
         body: JSON.stringify({ namespace: target, scope: input.scope, ref: input.ref }),

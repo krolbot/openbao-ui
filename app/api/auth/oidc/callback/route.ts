@@ -1,11 +1,12 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
+import { BASE_PATH } from "@/lib/base-path";
 import { openbao } from "@/lib/openbao";
 import { setToken } from "@/lib/session";
 
 /**
- * GET /ui/api/auth/oidc/callback?code=&state=
+ * GET /ui2/api/auth/oidc/callback?code=&state=
  * The OIDC provider redirects here; we exchange the code for a token, store it,
  * and bounce to the app.
  */
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
   const nonce = store.get("oidc_nonce")?.value ?? "";
   const mount = store.get("oidc_mount")?.value ?? "oidc";
 
-  const loginUrl = new URL("/ui/login", url.origin);
+  const loginUrl = new URL(`${BASE_PATH}/login`, url.origin);
 
   if (!code || !state || !nonce) {
     loginUrl.searchParams.set("error", "Invalid OIDC callback");
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
     await setToken(res.auth.client_token, res.auth.lease_duration);
     store.delete("oidc_nonce");
     store.delete("oidc_mount");
-    return NextResponse.redirect(new URL("/ui", url.origin));
+    return NextResponse.redirect(new URL(BASE_PATH, url.origin));
   } catch {
     loginUrl.searchParams.set("error", "OIDC login failed");
     return NextResponse.redirect(loginUrl);

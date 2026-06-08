@@ -10,8 +10,8 @@ import { isOperator } from "@/lib/ui-admin";
  * namespace. Stores ONLY the non-secret definition — app, env selector, level,
  * and the materialized role/policy names — so they can be listed, rotated, and
  * revoked. The secret_id is shown once at issue/rotate time and is NEVER stored.
- *   GET /ui/api/app-credentials  — authenticated
- *   PUT /ui/api/app-credentials  — operator only (namespace from header)
+ *   GET /ui2/api/app-credentials  — authenticated
+ *   PUT /ui2/api/app-credentials  — operator only (namespace from header)
  */
 export const dynamic = "force-dynamic";
 

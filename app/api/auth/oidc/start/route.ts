@@ -1,11 +1,12 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
+import { API_BASE } from "@/lib/base-path";
 import { isCrossSiteRequest } from "@/lib/csrf";
 import { openbao, OpenBaoRequestError } from "@/lib/openbao";
 
 /**
- * POST /ui/api/auth/oidc/start  { mount?, role? }
+ * POST /ui2/api/auth/oidc/start  { mount?, role? }
  * Returns the provider auth URL to redirect to, and stashes the client nonce +
  * mount in httpOnly cookies for the callback to use.
  *
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
   }
   const mount = body.mount || "oidc";
   const nonce = crypto.randomUUID();
-  const redirectUri = `${new URL(req.url).origin}/ui/api/auth/oidc/callback`;
+  const redirectUri = `${new URL(req.url).origin}${API_BASE}/auth/oidc/callback`;
 
   try {
     const res = await openbao.oidcAuthURL(mount, body.role, redirectUri, nonce);

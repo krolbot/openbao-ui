@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { API_BASE } from "@/lib/base-path";
 
 export type Session = {
   displayName: string;
@@ -13,7 +14,7 @@ export function useSession() {
   return useQuery({
     queryKey: ["session"],
     queryFn: async (): Promise<Session | null> => {
-      const res = await fetch("/ui/api/auth/session");
+      const res = await fetch(`${API_BASE}/auth/session`);
       if (!res.ok) return null;
       return res.json();
     },
@@ -27,7 +28,7 @@ export function useRenew() {
   return useMutation({
     meta: { success: "Token renewed" },
     mutationFn: async () => {
-      const res = await fetch("/ui/api/auth/renew", { method: "POST" });
+      const res = await fetch(`${API_BASE}/auth/renew`, { method: "POST" });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error ?? `Renew failed (${res.status})`);

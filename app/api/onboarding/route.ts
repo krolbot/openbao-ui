@@ -6,8 +6,8 @@ import { getToken } from "@/lib/session";
 
 /**
  * Per-namespace onboarding progress for the "Getting started" checklist.
- *   GET /ui/api/onboarding?namespace=<ns>
- *   PUT /ui/api/onboarding   { namespace?, dismissed?, steps? }  (shallow-merged)
+ *   GET /ui2/api/onboarding?namespace=<ns>
+ *   PUT /ui2/api/onboarding   { namespace?, dismissed?, steps? }  (shallow-merged)
  *
  * Stores only non-derivable bits (dismissed flag + manual step marks); the
  * checklist derives most progress from live OpenBao state. Writes need a valid

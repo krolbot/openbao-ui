@@ -4,7 +4,7 @@ import { isCrossSiteRequest } from "@/lib/csrf";
 import { openbao, OpenBaoRequestError } from "@/lib/openbao";
 import { getToken, setToken } from "@/lib/session";
 
-/** POST /ui/api/auth/renew — renew-self and refresh the cookie lifetime. */
+/** POST /ui2/api/auth/renew — renew-self and refresh the cookie lifetime. */
 export async function POST(req: Request) {
   if (isCrossSiteRequest(req)) {
     return NextResponse.json({ error: "cross-site request blocked" }, { status: 403 });

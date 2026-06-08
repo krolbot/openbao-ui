@@ -11,7 +11,7 @@ type LoginBody =
   | { method: "approle"; mount?: string; roleId: string; secretId: string };
 
 /**
- * POST /ui/api/auth/login
+ * POST /ui2/api/auth/login
  *
  * Validates credentials against OpenBao server-side, then stores the resulting
  * token in an httpOnly cookie. The raw token never reaches client JS.

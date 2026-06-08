@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { API_BASE } from "@/lib/base-path";
 
 import {
   buildAccessPolicy,
@@ -52,7 +53,7 @@ export function useAccessRoles() {
   return useQuery({
     queryKey: ["access-roles", namespace],
     queryFn: async (): Promise<AccessRole[]> => {
-      const res = await fetch(`/ui/api/access-roles`, {
+      const res = await fetch(`${API_BASE}/access-roles`, {
         headers: { "x-vault-namespace": namespace },
       });
       if (!res.ok) return [];
@@ -65,7 +66,7 @@ export function useAccessRoles() {
 function useSaveAccessRoles() {
   const { namespace } = useNamespace();
   return async (roles: AccessRole[]) => {
-    const res = await fetch(`/ui/api/access-roles`, {
+    const res = await fetch(`${API_BASE}/access-roles`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-vault-namespace": namespace },
       body: JSON.stringify({ roles }),

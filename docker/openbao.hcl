@@ -7,7 +7,9 @@
 # quick start prefer dev mode (BAO_DEV=1). Production deployments should mount a
 # real config/storage and TLS termination.
 
-ui = false
+# Serve OpenBao's stock UI at :8200/ui/. The Next.js BFF proxies /ui/* through
+# to it (our own app lives at /ui2/*), so both UIs are reachable side by side.
+ui = true
 
 storage "file" {
   path = "/bao/file"

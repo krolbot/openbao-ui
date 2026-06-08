@@ -7,7 +7,7 @@ remains the source of truth and the enforcement point for every operation.
 - The OpenBao token is stored in an **httpOnly** cookie (`bao_token`), so it is
   never readable by client-side JavaScript (mitigates token theft via XSS).
 - The cookie is `SameSite=lax`, `secure` in production, `path=/`.
-- All authenticated calls go through the BFF proxy (`/ui/api/bao/*`), which
+- All authenticated calls go through the BFF proxy (`/ui2/api/bao/*`), which
   injects the token server-side. The browser never sends the token directly.
 
 ## Authorization
@@ -19,8 +19,8 @@ remains the source of truth and the enforcement point for every operation.
 
 ## CSRF
 - `SameSite=lax` already blocks the session cookie on cross-site POST/fetch.
-- Defense-in-depth: state-changing BFF routes (`/ui/api/auth/*`, non-GET
-  `/ui/api/bao/*`) reject cross-site requests via an Origin / `Sec-Fetch-Site`
+- Defense-in-depth: state-changing BFF routes (`/ui2/api/auth/*`, non-GET
+  `/ui2/api/bao/*`) reject cross-site requests via an Origin / `Sec-Fetch-Site`
   same-origin check (`lib/csrf.ts`). Non-browser clients (no ambient cookie) are
   not a CSRF vector and are allowed.
 

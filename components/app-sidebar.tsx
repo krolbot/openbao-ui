@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, BookOpen, KeyRound, LayoutDashboard, Settings, Users } from "lucide-react";
+import { Activity, BookOpen, ExternalLink, KeyRound, LayoutDashboard, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -10,11 +10,12 @@ import { NamespaceSwitcher } from "@/components/namespace-switcher";
 import { SessionBar } from "@/components/session-bar";
 import { ThemeToggle } from "@/components/theme";
 import { useCan } from "@/lib/acl";
+import { BASE_PATH } from "@/lib/base-path";
 import { cn } from "@/lib/utils";
 
 export function AppSidebar({ displayName }: { displayName: string }) {
   const pathname = usePathname();
-  const rel = pathname.replace(/^\/ui/, "") || "/";
+  const rel = pathname.replace(new RegExp(`^${BASE_PATH}`), "") || "/";
   const can = useCan();
 
   // capability-aware: hide what the token can't use (Access stays — the
@@ -66,6 +67,16 @@ export function AppSidebar({ displayName }: { displayName: string }) {
             </Link>
           );
         })}
+
+        {/* Escape the basePath with a plain <a> so this points at OpenBao's
+            stock UI (/ui) rather than /ui2/ui. */}
+        <a
+          href="/ui"
+          className="group/nav flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-all duration-150 hover:bg-sidebar-accent hover:text-foreground"
+        >
+          <ExternalLink className="size-4 text-muted-foreground transition-colors group-hover/nav:text-foreground" />
+          Classic UI
+        </a>
       </nav>
 
       <SessionBar displayName={displayName} />

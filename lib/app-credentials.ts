@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { API_BASE } from "@/lib/base-path";
 
 import { buildAccessPolicy, type AccessLevel, type EnvTarget } from "@/lib/access-policy";
 import { resolveEnvs, type EnvSelector } from "@/lib/access-roles";
@@ -55,7 +56,7 @@ export function useAppCredentials() {
   return useQuery({
     queryKey: ["app-credentials", namespace],
     queryFn: async (): Promise<AppCredential[]> => {
-      const res = await fetch(`/ui/api/app-credentials`, {
+      const res = await fetch(`${API_BASE}/app-credentials`, {
         headers: { "x-vault-namespace": namespace },
       });
       if (!res.ok) return [];
@@ -68,7 +69,7 @@ export function useAppCredentials() {
 function useSaveAppCredentials() {
   const { namespace } = useNamespace();
   return async (creds: AppCredential[]) => {
-    const res = await fetch(`/ui/api/app-credentials`, {
+    const res = await fetch(`${API_BASE}/app-credentials`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-vault-namespace": namespace },
       body: JSON.stringify({ creds }),
