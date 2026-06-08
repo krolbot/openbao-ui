@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { EnvScopePicker, Segmented } from "@/components/env-selector";
-import { SharedKeysPicker } from "@/components/shared-keys-picker";
+import { PathPicker } from "@/components/path-picker";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { type AccessLevel } from "@/lib/access-policy";
 import {
   previewPolicy,
+  resolveEnvs,
   useApplyAccessRole,
   type AccessRole,
   type EnvSelector,
@@ -22,21 +23,22 @@ export function GrantAccessDialog({
   existing,
   initial,
   initialApp,
+  initialPaths,
   onClose,
 }: {
   existing: AccessRole[];
   initial?: AccessRole;
   initialApp?: string;
+  initialPaths?: string[];
   onClose: () => void;
 }) {
   const apply = useApplyAccessRole();
 
-  const [name, setName] = React.useState(initial?.name ?? "");
+  const [name, setName] = React.useState(initial?.name ?? initialApp ?? "");
   const [description, setDescription] = React.useState(initial?.description ?? "");
-  const [level, setLevel] = React.useState<AccessLevel>(initial?.level ?? "editor");
+  const [level, setLevel] = React.useState<AccessLevel>(initial?.level ?? "viewer");
   const [env, setEnv] = React.useState<EnvSelector>(initial?.env ?? { kind: "mounts", mounts: [] });
-  const [app, setApp] = React.useState(initial?.app ?? initialApp ?? "");
-  const [shared, setShared] = React.useState<string[]>(initial?.shared ?? []);
+  const [paths, setPaths] = React.useState<string[]>(initial?.paths ?? initialPaths ?? []);
   const [error, setError] = React.useState<string | null>(null);
 
   const role: AccessRole = {
@@ -44,16 +46,11 @@ export function GrantAccessDialog({
     description: description.trim() || undefined,
     level,
     env,
-    app: app.trim() || undefined,
-    shared: shared.length ? shared : undefined,
+    paths,
   };
 
-  const preview = React.useMemo(
-    () => previewPolicy(role),
-    [JSON.stringify(role)],
-  );
-  // how many environments the selection resolves to (the preview's path count)
-  const envCount = (preview.match(/\/data\//g) ?? []).length;
+  const preview = React.useMemo(() => previewPolicy(role), [JSON.stringify(role)]);
+  const targets = resolveEnvs(env);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,8 +59,12 @@ export function GrantAccessDialog({
       setError("Name is required (letters, numbers, _ . -)");
       return;
     }
-    if (envCount === 0) {
-      setError("This selection doesn't match any environment");
+    if (targets.length === 0) {
+      setError("Pick at least one environment");
+      return;
+    }
+    if (paths.length === 0) {
+      setError("Pick at least one secret path (or “Everything”)");
       return;
     }
     try {
@@ -78,13 +79,13 @@ export function GrantAccessDialog({
     <Dialog open onClose={onClose} className="max-w-2xl">
       <DialogHeader
         title={initial ? "Edit access role" : "Grant access"}
-        description="Creates an OpenBao policy + identity group scoped to the chosen environments and app. Assign members to it below."
+        description="Creates an OpenBao policy + identity group scoped to the chosen environments and secret paths. Assign members to it below."
         onClose={onClose}
       />
       <form className="flex flex-col gap-4" onSubmit={submit}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Role name">
-            <Input value={name} onChange={(e) => setName(e.target.value)} className="font-mono" placeholder="payments-prod-editor" autoFocus disabled={!!initial} />
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="font-mono" placeholder="payments-prod-viewer" autoFocus disabled={!!initial} />
           </Field>
           <Field label="Access level">
             <Segmented options={LEVELS} value={level} onChange={(v) => setLevel(v as AccessLevel)} />
@@ -97,15 +98,11 @@ export function GrantAccessDialog({
 
         <EnvScopePicker initial={initial?.env} onChange={setEnv} />
 
-        <Field label="Application (optional — folder; blank = all apps)">
-          <Input value={app} onChange={(e) => setApp(e.target.value)} className="font-mono" placeholder="payments" />
-        </Field>
-
-        <SharedKeysPicker value={shared} onChange={setShared} />
+        <PathPicker mount={targets[0]?.mount} envPath={targets[0]?.envPath} value={paths} onChange={setPaths} />
 
         {/* live policy preview */}
         <div className="flex flex-col gap-1">
-          <Label>Generated policy {envCount ? <span className="text-muted-foreground">({envCount} path group{envCount === 1 ? "" : "s"})</span> : null}</Label>
+          <Label>Generated policy</Label>
           <pre className="max-h-48 overflow-auto rounded-md border bg-muted/40 p-3 text-xs leading-relaxed">
             <code>{preview}</code>
           </pre>

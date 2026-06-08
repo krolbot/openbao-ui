@@ -129,11 +129,7 @@ export default function TeamPage() {
               <li key={r.name} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
                 <span className="font-mono">{r.name}</span>
                 <Badge variant="muted" className="capitalize">{r.level}</Badge>
-                {r.app ? (
-                  <Badge variant="primary">app: {r.app}</Badge>
-                ) : (
-                  <Badge variant="outline">all apps</Badge>
-                )}
+                <Badge variant="primary">{(r.paths ?? []).length} path{(r.paths ?? []).length === 1 ? "" : "s"}</Badge>
                 <span className="truncate text-xs text-muted-foreground">{envSummary(r.env)}</span>
                 <div className="ml-auto flex items-center gap-1">
                   <Button

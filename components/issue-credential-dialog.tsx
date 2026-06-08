@@ -5,7 +5,7 @@ import * as React from "react";
 
 import { CopyButton } from "@/components/copy-button";
 import { EnvScopePicker, Segmented } from "@/components/env-selector";
-import { SharedKeysPicker } from "@/components/shared-keys-picker";
+import { PathPicker } from "@/components/path-picker";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Disclosure } from "@/components/ui/disclosure";
@@ -32,10 +32,12 @@ const LEVELS: AccessLevel[] = ["viewer", "editor"];
 export function IssueCredentialDialog({
   existing,
   initialApp,
+  initialPaths,
   onClose,
 }: {
   existing: AppCredential[];
   initialApp?: string;
+  initialPaths?: string[];
   onClose: () => void;
 }) {
   const issue = useIssueAppCredential();
@@ -43,7 +45,9 @@ export function IssueCredentialDialog({
   const [app, setApp] = React.useState(initialApp ?? "");
   const [level, setLevel] = React.useState<AccessLevel>("viewer");
   const [env, setEnv] = React.useState<EnvSelector>({ kind: "mounts", mounts: [] });
-  const [shared, setShared] = React.useState<string[]>([]);
+  const [paths, setPaths] = React.useState<string[]>(
+    initialPaths ?? (initialApp ? [`${initialApp}/*`] : []),
+  );
   const [ttl, setTtl] = React.useState("1h");
   const [mount, setMount] = React.useState("approle");
   const [error, setError] = React.useState<string | null>(null);
@@ -51,8 +55,8 @@ export function IssueCredentialDialog({
 
   const envs = resolveEnvs(env);
   const cleanApp = app.trim();
-  const preview = envs.length && cleanApp
-    ? buildAccessPolicy({ envs, app: cleanApp, level, shared })
+  const preview = envs.length && paths.length
+    ? buildAccessPolicy({ envs, level, paths })
     : "";
   const roleNames = cleanApp ? envs.map((e) => credNames(cleanApp, envIdent(e), level).role) : [];
 
@@ -60,15 +64,19 @@ export function IssueCredentialDialog({
     e.preventDefault();
     setError(null);
     if (!/^[a-zA-Z0-9_.-]+$/.test(cleanApp)) {
-      setError("App name is required (letters, numbers, _ . -)");
+      setError("Client name is required (letters, numbers, _ . -)");
       return;
     }
     if (envs.length === 0) {
       setError("This selection doesn't match any environment");
       return;
     }
+    if (paths.length === 0) {
+      setError("Pick at least one secret path (or “Everything”)");
+      return;
+    }
     try {
-      const res = await issue.mutateAsync({ app: cleanApp, env, level, mount, ttl, shared: shared.length ? shared : undefined, existing });
+      const res = await issue.mutateAsync({ app: cleanApp, env, level, mount, ttl, paths, existing });
       setIssued(res.issued);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to issue credential");
@@ -119,13 +127,13 @@ export function IssueCredentialDialog({
     <Dialog open onClose={onClose} className="max-w-2xl">
       <DialogHeader
         title="Issue app credential"
-        description="Creates an isolated AppRole (machine identity) per environment, scoped to one app's secrets. Your service logs in with role_id + secret_id to get a short-lived token."
+        description="Creates an isolated AppRole (machine identity) per environment, scoped to the secret paths you pick. Your service logs in with role_id + secret_id to get a short-lived token."
         onClose={onClose}
       />
       <form className="flex flex-col gap-4" onSubmit={submit}>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Application (folder)">
-            <Input value={app} onChange={(e) => setApp(e.target.value)} className="font-mono" placeholder="payments" autoFocus disabled={!!initialApp} />
+          <Field label="Client name">
+            <Input value={app} onChange={(e) => setApp(e.target.value)} className="font-mono" placeholder="backend" autoFocus disabled={!!initialApp} />
           </Field>
           <Field label="Permission">
             <Segmented
@@ -139,7 +147,7 @@ export function IssueCredentialDialog({
 
         <EnvScopePicker initial={undefined} onChange={setEnv} />
 
-        <SharedKeysPicker value={shared} onChange={setShared} />
+        <PathPicker mount={envs[0]?.mount} envPath={envs[0]?.envPath} value={paths} onChange={setPaths} />
 
         <Disclosure label="Advanced">
           <div className="grid gap-3 pt-1 sm:grid-cols-2">

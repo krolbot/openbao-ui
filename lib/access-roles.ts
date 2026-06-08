@@ -22,8 +22,7 @@ export type AccessRole = {
   description?: string;
   level: AccessLevel;
   env: EnvSelector;
-  app?: string; // omit/empty = all apps in the environment(s)
-  shared?: string[]; // shared key bundles to also grant read on
+  paths: string[]; // env-relative secret paths this role may access
 };
 
 const stripSlash = (s: string) => s.replace(/^\/+|\/+$/g, "");
@@ -40,9 +39,8 @@ export function resolveEnvs(env: EnvSelector): EnvTarget[] {
 export function previewPolicy(role: AccessRole): string {
   const scope: AccessScope = {
     envs: resolveEnvs(role.env),
-    app: role.app,
     level: role.level,
-    shared: role.shared,
+    paths: role.paths,
   };
   return buildAccessPolicy(scope);
 }
@@ -95,7 +93,7 @@ export function useApplyAccessRole() {
       const { role, existing } = vars;
       const envs = resolveEnvs(role.env);
       if (envs.length === 0) throw new Error("No environments matched this selection");
-      const policy = buildAccessPolicy({ envs, app: role.app, level: role.level, shared: role.shared });
+      const policy = buildAccessPolicy({ envs, level: role.level, paths: role.paths });
 
       await baoFetch({
         path: `sys/policies/acl/${role.name}`,

@@ -320,9 +320,11 @@ test("secrets: disabling an env warns about referencing scoped roles", async ({ 
   await page.goto("/ui/access/team");
   await page.getByRole("button", { name: "Grant access" }).click();
   dialog = page.getByRole("dialog");
-  await dialog.getByPlaceholder("payments-prod-editor").fill(role);
+  await dialog.getByPlaceholder("payments-prod-viewer").fill(role);
   await dialog.getByRole("button", { name: "Specific environments" }).click();
   await dialog.locator("label").filter({ hasText: env }).locator("input").check();
+  // grant on all paths in that env
+  await dialog.locator("label").filter({ hasText: "Everything" }).locator("input").check();
   await dialog.getByRole("button", { name: "Grant access", exact: true }).click();
   await expect(page.getByText(role)).toBeVisible();
 
@@ -343,16 +345,15 @@ test("team: grant scoped access (app-specific role) with live policy preview", a
   await page.goto("/ui/access/team");
   await page.getByRole("button", { name: "Grant access" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByPlaceholder("payments-prod-editor").fill(role);
-  // scope to specific environments (the dev `secret` mount) + the payments app
+  await dialog.getByPlaceholder("payments-prod-viewer").fill(role);
+  // scope to specific environments (the dev `secret` mount is always present)
   await dialog.getByRole("button", { name: "Specific environments" }).click();
-  // select every environment (the dev `secret` mount is always present); the
-  // generated policy keys off real mount paths, not display labels
   for (const c of await dialog.getByRole("checkbox").all()) await c.check();
-  await dialog.getByPlaceholder("payments", { exact: true }).fill("payments");
+  // grant the whole environment via the path picker
+  await dialog.locator("label").filter({ hasText: "Everything" }).locator("input").check();
 
   // the generated policy preview reflects the selection
-  await expect(dialog.getByText("secret/data/payments/*")).toBeVisible();
+  await expect(dialog.getByText("secret/data/*")).toBeVisible();
 
   await dialog.getByRole("button", { name: "Grant access", exact: true }).click();
 
@@ -370,10 +371,12 @@ test("access: issue an app credential reveals role_id/secret_id", async ({ page 
   await page.goto("/ui/access/app-credentials");
   await page.getByRole("button", { name: "Issue credential" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByPlaceholder("payments").fill(app);
+  await dialog.getByPlaceholder("backend").fill(app);
   // scope to a specific environment (the dev `secret` mount is always present)
   await dialog.getByRole("button", { name: "Specific environments" }).click();
   await dialog.getByRole("checkbox").first().check();
+  // grant the whole environment via the path picker
+  await dialog.locator("label").filter({ hasText: "Everything" }).locator("input").check();
   await dialog.getByRole("button", { name: "Issue credential" }).click();
 
   // reveal step shows the one-time credentials
@@ -400,26 +403,6 @@ test("secrets: apps view + register a new app", async ({ page }) => {
   await dialog.getByRole("button", { name: "Create app" }).click();
   // the registered app shows up in the grid
   await expect(page.getByText(app, { exact: true })).toBeVisible();
-});
-
-test("secrets: create a shared keys bundle", async ({ page }) => {
-  const name = `shared${Date.now()}`;
-  await page.goto("/");
-  await page.fill("#token", TOKEN);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
-
-  await page.goto("/ui/secrets/shared");
-  await expect(page.getByRole("heading", { name: "Shared keys" })).toBeVisible();
-  await page.getByRole("button", { name: "New shared keys" }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByPlaceholder("stripe", { exact: true }).fill(name);
-  await dialog.getByPlaceholder("STRIPE_API_KEY").fill("API_KEY");
-  // store it in the first available environment
-  await dialog.getByRole("checkbox").first().check();
-  await dialog.getByRole("button", { name: "Create shared keys" }).click();
-  // the bundle now appears in the list
-  await expect(page.getByText(name, { exact: true })).toBeVisible();
 });
 
 test("auth: Google sign-in wizard renders", async ({ page }) => {

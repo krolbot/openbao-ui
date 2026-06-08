@@ -10,12 +10,12 @@ import { useNamespace } from "@/lib/namespace";
 // A machine identity for an app: one AppRole per environment (isolated), each
 // bound to a scoped policy. The store keeps only this non-secret definition.
 export type AppCredential = {
-  app: string; // app folder, e.g. "payments"
+  app: string; // client name (also the role/policy prefix), e.g. "backend"
   level: AccessLevel; // viewer = read-only, editor = read/write
   env: EnvSelector;
   mount: string; // approle auth mount (default "approle")
   ttl?: string; // token_ttl, e.g. "1h"
-  shared?: string[]; // shared key bundles this app also reads
+  paths: string[]; // env-relative secret paths this client may access
   roles: { env: string; role: string; policy: string }[]; // materialized per env
   createdAt: number;
 };
@@ -116,7 +116,7 @@ export function useIssueAppCredential() {
       level: AccessLevel;
       mount?: string;
       ttl?: string;
-      shared?: string[];
+      paths?: string[];
       existing: AppCredential[];
     }): Promise<{ definition: AppCredential; issued: IssuedCred[] }> => {
       const app = slug(vars.app);
@@ -132,7 +132,7 @@ export function useIssueAppCredential() {
       for (const e of envs) {
         const ident = envIdent(e);
         const { role, policy } = credNames(app, ident, vars.level);
-        const policyHcl = buildAccessPolicy({ envs: [e], app, level: vars.level, shared: vars.shared });
+        const policyHcl = buildAccessPolicy({ envs: [e], level: vars.level, paths: vars.paths });
         await baoFetch({
           path: `sys/policies/acl/${policy}`,
           method: "POST",
@@ -165,7 +165,7 @@ export function useIssueAppCredential() {
         env: vars.env,
         mount,
         ttl: vars.ttl,
-        shared: vars.shared?.length ? vars.shared : undefined,
+        paths: vars.paths ?? [],
         roles,
         createdAt: Date.now(),
       };
