@@ -1,8 +1,10 @@
 "use client";
 
-// Thin client-side wrapper around the BFF proxy (/ui/api/bao). Adds the
+import { API_BASE } from "@/lib/base-path";
+
+// Thin client-side wrapper around the BFF proxy (<basePath>/api/bao). Adds the
 // namespace header, encodes LIST as ?list=true, and normalizes OpenBao errors.
-const BASE = "/ui/api/bao";
+const BASE = `${API_BASE}/bao`;
 
 /** Parse a body as JSON, returning null for empty/non-JSON payloads so a
  *  non-JSON error response still becomes a BaoError rather than a throw. */

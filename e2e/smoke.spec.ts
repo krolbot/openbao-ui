@@ -5,9 +5,10 @@ const TOKEN = process.env.E2E_TOKEN ?? "root";
 // Smoke test of the Phase 2 happy path against a live stack:
 // login -> overview status -> secret engines -> KV folder browser.
 test("login and browse the KV engine", async ({ page }) => {
-  // redirected to /ui/login
+  // redirected to /ui2/login
   await page.goto("/");
   await expect(page.getByText("Sign in to OpenBao")).toBeVisible();
+  await expect(page).toHaveURL(/\/ui2\/login/);
 
   // token login -> overview
   await page.fill("#token", TOKEN);
@@ -24,7 +25,7 @@ test("login and browse the KV engine", async ({ page }) => {
   await expect(page.getByRole("link", { name: "secret", exact: true })).toBeVisible();
 
   // comparison matrix page is reachable and renders
-  await page.goto("/ui/secrets/compare");
+  await page.goto("/ui2/secrets/compare");
   await expect(page.getByRole("heading", { name: "Compare environments" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Compare" })).toBeVisible();
 });
@@ -36,7 +37,7 @@ test("kv lifecycle: create, view, delete a secret", async ({ page }) => {
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
-  await page.goto("/ui/secrets/secret");
+  await page.goto("/ui2/secrets/secret");
   await page.getByRole("button", { name: "New secret" }).click();
   await page.fill("#secret-name", name);
   await page.getByPlaceholder("key").first().fill("api_key");
@@ -65,7 +66,7 @@ test("kv: deep-link straight to a secret resolves (no 404)", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
   // create a nested secret
-  await page.goto("/ui/secrets/secret");
+  await page.goto("/ui2/secrets/secret");
   await page.getByRole("button", { name: "New secret" }).click();
   await page.fill("#secret-name", name);
   await page.getByPlaceholder("key").first().fill("api_key");
@@ -75,7 +76,7 @@ test("kv: deep-link straight to a secret resolves (no 404)", async ({ page }) =>
 
   // navigate directly to the secret's own URL: the browser lists its parent
   // folder and auto-selects the leaf instead of 404-ing on it
-  await page.goto(`/ui/secrets/secret/${name}`);
+  await page.goto(`/ui2/secrets/secret/${name}`);
   await expect(page.getByText("Request failed (404)")).toHaveCount(0);
   await expect(page.getByText(name)).toBeVisible();
   await expect(page.getByText("version 1")).toBeVisible();
@@ -117,7 +118,7 @@ test("foundation: command palette and dark mode", async ({ page }) => {
   await expect(input).toBeVisible();
   await input.fill("secrets");
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/ui\/secrets/);
+  await expect(page).toHaveURL(/\/ui2\/secrets/);
 
   // dark mode toggles the root .dark class
   await page.getByRole("button", { name: "Switch to dark" }).click();
@@ -131,16 +132,16 @@ test("access management: auth methods and identity", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
   // Auth Methods tab lists enabled methods (token is always present)
-  await page.goto("/ui/access/auth");
+  await page.goto("/ui2/access/auth");
   await expect(page.getByRole("button", { name: /token\// })).toBeVisible();
 
   // Identity tab shows the Entities/Groups switcher
-  await page.goto("/ui/access/identity");
+  await page.goto("/ui2/access/identity");
   await expect(page.getByRole("tab", { name: "Entities" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Groups" })).toBeVisible();
 
   // MFA tab shows TOTP methods + login enforcements
-  await page.goto("/ui/access/mfa");
+  await page.goto("/ui2/access/mfa");
   await expect(page.getByRole("heading", { name: "TOTP methods" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Login enforcements" })).toBeVisible();
 });
@@ -187,7 +188,7 @@ test("environments: customize a friendly display name", async ({ page }) => {
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
-  await page.goto("/ui/secrets");
+  await page.goto("/ui2/secrets");
   // root token is an operator, so the customize control is available
   await page.getByRole("button", { name: "Customize secret/" }).click();
   await page.fill("#lbl-name", friendly);
@@ -246,13 +247,13 @@ test("team: create a role and assign it to a member", async ({ page }) => {
 
   // create a member entity via Identity
   const member = `alice-${Date.now()}`;
-  await page.goto("/ui/access/identity");
+  await page.goto("/ui2/access/identity");
   await page.getByRole("button", { name: "New entity" }).click();
   await page.getByRole("dialog").getByRole("textbox").first().fill(member);
   await page.getByRole("button", { name: "Create", exact: true }).click();
 
   // Team: materialize the "viewer" role, then assign it to the member
-  await page.goto("/ui/access/team");
+  await page.goto("/ui2/access/team");
   const viewerCard = page.locator("li").filter({ hasText: "viewer" });
   await viewerCard.getByRole("button", { name: "Create role" }).click();
   await expect(viewerCard.getByText("Created")).toBeVisible();
@@ -272,16 +273,14 @@ test("secrets: create a new environment (KV mount + label) in one step", async (
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
-  await page.goto("/ui/secrets");
+  await page.goto("/ui2/secrets");
   await page.getByRole("button", { name: "New environment" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByPlaceholder("prod", { exact: true }).fill(mount);
   await dialog.getByPlaceholder("Production").fill("Billing Prod");
-  await dialog.getByPlaceholder("prod — shareable across envs").fill("prod");
   await dialog.getByRole("button", { name: "Create environment" }).click();
 
-  // the new environment shows up with its friendly name (.first(): the name also
-  // appears in the env-groups overview now that it carries a group)
+  // the new environment shows up with its friendly name
   await expect(page.getByText("Billing Prod").first()).toBeVisible();
 
   // disable it again (typed-confirm) — full lifecycle
@@ -298,44 +297,40 @@ test("secrets: ?new=1 deep-link auto-opens the New environment dialog", async ({
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
-  await page.goto("/ui/secrets?new=1");
+  await page.goto("/ui2/secrets?new=1");
   await expect(page.getByRole("heading", { name: "New environment" })).toBeVisible();
 });
 
-test("secrets: env-groups overview + disable warns about referencing roles", async ({ page }) => {
+test("secrets: disabling an env warns about referencing scoped roles", async ({ page }) => {
   const env = `warnenv${Date.now()}`;
-  const group = `wg${Date.now()}`;
   const role = `warnrole${Date.now()}`;
   await page.goto("/");
   await page.fill("#token", TOKEN);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
-  // create an environment tagged into a group
-  await page.goto("/ui/secrets");
+  // create an environment
+  await page.goto("/ui2/secrets");
   await page.getByRole("button", { name: "New environment" }).click();
   let dialog = page.getByRole("dialog");
   await dialog.getByPlaceholder("prod", { exact: true }).fill(env);
-  await dialog.getByPlaceholder("prod — shareable across envs").fill(group);
   await dialog.getByRole("button", { name: "Create environment" }).click();
+  await expect(page.getByText(`${env}/`).first()).toBeVisible();
 
-  // the env-groups overview surfaces the group → its member environment
-  // (.first(): the group name also shows as a badge on the mount card)
-  await expect(page.getByRole("heading", { name: "Environment groups" })).toBeVisible();
-  await expect(page.getByText(group, { exact: true }).first()).toBeVisible();
-
-  // grant a scoped role over that whole group
-  await page.goto("/ui/access/team");
+  // grant a scoped role over that specific environment
+  await page.goto("/ui2/access/team");
   await page.getByRole("button", { name: "Grant access" }).click();
   dialog = page.getByRole("dialog");
-  await dialog.getByPlaceholder("payments-prod-editor").fill(role);
-  await dialog.getByRole("button", { name: "By env group" }).click();
-  await dialog.locator("select").selectOption({ label: group });
+  await dialog.getByPlaceholder("payments-prod-viewer").fill(role);
+  await dialog.getByRole("button", { name: "Specific environments" }).click();
+  await dialog.locator("label").filter({ hasText: env }).locator("input").check();
+  // grant on all paths in that env
+  await dialog.locator("label").filter({ hasText: "Everything" }).locator("input").check();
   await dialog.getByRole("button", { name: "Grant access", exact: true }).click();
   await expect(page.getByText(role)).toBeVisible();
 
   // disabling the env now warns that the role still targets it
-  await page.goto("/ui/secrets");
+  await page.goto("/ui2/secrets");
   await page.getByLabel(`Disable ${env}/`).click();
   await expect(page.getByText(role)).toBeVisible();
   await expect(page.getByText(/scoped role/)).toBeVisible();
@@ -348,24 +343,67 @@ test("team: grant scoped access (app-specific role) with live policy preview", a
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
-  await page.goto("/ui/access/team");
+  await page.goto("/ui2/access/team");
   await page.getByRole("button", { name: "Grant access" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByPlaceholder("payments-prod-editor").fill(role);
-  // scope to specific environments (the dev `secret` mount) + the payments app
+  await dialog.getByPlaceholder("payments-prod-viewer").fill(role);
+  // scope to specific environments (the dev `secret` mount is always present)
   await dialog.getByRole("button", { name: "Specific environments" }).click();
-  // select every environment (the dev `secret` mount is always present); the
-  // generated policy keys off real mount paths, not display labels
   for (const c of await dialog.getByRole("checkbox").all()) await c.check();
-  await dialog.getByPlaceholder("payments", { exact: true }).fill("payments");
+  // grant the whole environment via the path picker
+  await dialog.locator("label").filter({ hasText: "Everything" }).locator("input").check();
 
   // the generated policy preview reflects the selection
-  await expect(dialog.getByText("secret/data/payments/*")).toBeVisible();
+  await expect(dialog.getByText("secret/data/*")).toBeVisible();
 
   await dialog.getByRole("button", { name: "Grant access", exact: true }).click();
 
   // the scoped role is now listed (which means policy + group were created)
   await expect(page.getByText(role)).toBeVisible();
+});
+
+test("access: issue an app credential reveals role_id/secret_id", async ({ page }) => {
+  const app = `svc${Date.now()}`;
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui2/access/app-credentials");
+  await page.getByRole("button", { name: "Issue credential" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByPlaceholder("backend").fill(app);
+  // scope to a specific environment (the dev `secret` mount is always present)
+  await dialog.getByRole("button", { name: "Specific environments" }).click();
+  await dialog.getByRole("checkbox").first().check();
+  // grant the whole environment via the path picker
+  await dialog.locator("label").filter({ hasText: "Everything" }).locator("input").check();
+  await dialog.getByRole("button", { name: "Issue credential" }).click();
+
+  // reveal step shows the one-time credentials
+  await expect(page.getByText("Credentials issued")).toBeVisible();
+  await expect(page.getByText("role_id").first()).toBeVisible();
+  await expect(page.getByText("secret_id").first()).toBeVisible();
+  await page.getByRole("button", { name: "Done" }).click();
+  // the credential is now listed
+  await expect(page.getByText(app, { exact: true })).toBeVisible();
+});
+
+test("secrets: apps view + register a new app", async ({ page }) => {
+  const app = `app${Date.now()}`;
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui2/secrets/apps");
+  await expect(page.getByRole("heading", { name: "Apps" })).toBeVisible();
+  await page.getByRole("button", { name: "New app" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByPlaceholder("payments", { exact: true }).fill(app);
+  await dialog.getByRole("button", { name: "Create app" }).click();
+  // the registered app shows up in the grid
+  await expect(page.getByText(app, { exact: true })).toBeVisible();
 });
 
 test("auth: Google sign-in wizard renders", async ({ page }) => {
@@ -374,14 +412,26 @@ test("auth: Google sign-in wizard renders", async ({ page }) => {
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
-  await page.goto("/ui/access/auth");
+  await page.goto("/ui2/access/auth");
   await page.getByRole("button", { name: "Set up Google sign-in" }).click();
   await expect(page.getByRole("heading", { name: "Set up Google sign-in" })).toBeVisible();
   // the callback redirect URI the operator must register with Google is shown
-  await expect(page.getByText("/ui/api/auth/oidc/callback")).toBeVisible();
+  await expect(page.getByText("/ui2/api/auth/oidc/callback")).toBeVisible();
   await expect(page.getByText("Client ID")).toBeVisible();
   // close without submitting (no external network needed)
   await page.getByRole("button", { name: "Cancel" }).click();
+});
+
+test("coexistence: OpenBao's stock UI is still served at /ui", async ({ page }) => {
+  // Our app lives at /ui2; OpenBao's own UI stays at /ui (proxied through the
+  // BFF). Hitting /ui must reach the stock UI's HTML, not our app's login.
+  const res = await page.goto("/ui/");
+  expect(res?.status()).toBeLessThan(400);
+  // The stock Ember UI boots from a <div id="ember-app"> / data-app-boot config.
+  const html = await page.content();
+  expect(html).toMatch(/ember|data-app-boot|OpenBao/i);
+  // and it must NOT be our React app's sidebar/login
+  await expect(page.getByText("Sign in to OpenBao")).toHaveCount(0);
 });
 
 // NOTE: keep this LAST — it enables an unauth auth method and sets branding,
@@ -393,7 +443,7 @@ test("login customization: branding + method discovery", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
   // enable an OIDC method and surface it on the login page (listing_visibility)
-  await page.goto("/ui/access/auth");
+  await page.goto("/ui2/access/auth");
   await page.getByRole("button", { name: "Enable method" }).click();
   await page.getByRole("dialog").locator("select").selectOption("oidc");
   await page.getByRole("button", { name: "Enable", exact: true }).click();
@@ -405,13 +455,13 @@ test("login customization: branding + method discovery", async ({ page }) => {
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
   // brand the login page via Settings → Login Page
-  await page.goto("/ui/settings/login");
+  await page.goto("/ui2/settings/login");
   await page.getByPlaceholder("Sign in to OpenBao").fill("Acme Vault");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
   // the login page reflects branding + discovered method, token tucked away
-  await page.goto("/ui/login");
+  await page.goto("/ui2/login");
   await expect(page.getByText("Acme Vault")).toBeVisible();
   await expect(page.getByRole("button", { name: /Continue with oidc/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Other ways to sign in" })).toBeVisible();

@@ -1,12 +1,11 @@
 "use client";
 
-import { Box, Database, GitCompare, KeyRound, Lock, Pencil, Plus, ScrollText, Settings, Terminal, Trash2, Users } from "lucide-react";
+import { Box, Database, GitCompare, KeyRound, Lock, Package, Pencil, Plus, ScrollText, Settings, Terminal, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { EnvGroupsOverview } from "@/components/env-groups-overview";
-import { colorDot, LabelEditor } from "@/components/label-editor";
+import { ColorDot, LabelEditor } from "@/components/label-editor";
 import { NewEnvironmentDialog } from "@/components/new-environment-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +73,7 @@ export default function SecretsPage() {
     if (!deleting) return [];
     const m = deleting.replace(/\/$/, "");
     return (accessRoles.data ?? []).filter((r) =>
-      resolveEnvs(r.env, labels).some((t) => t.mount === m),
+      resolveEnvs(r.env).some((t) => t.mount === m),
     );
   }, [deleting, accessRoles.data, labels]);
 
@@ -103,6 +102,11 @@ export default function SecretsPage() {
         className="mb-6"
         actions={
           <>
+            <Link href="/secrets/apps">
+              <Button variant="outline" size="sm">
+                <Package /> Apps
+              </Button>
+            </Link>
             <Link href="/secrets/compare">
               <Button variant="outline" size="sm">
                 <GitCompare /> Compare
@@ -116,8 +120,6 @@ export default function SecretsPage() {
           </>
         }
       />
-
-      <EnvGroupsOverview />
 
       {isLoading ? (
         <ul className="grid gap-3 sm:grid-cols-2">
@@ -159,14 +161,11 @@ export default function SecretsPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     {lbl?.color ? (
-                      <span className={`size-2.5 shrink-0 rounded-full ${colorDot(lbl.color)}`} />
+                      <ColorDot color={lbl.color} className="size-2.5 shrink-0" />
                     ) : null}
                     <span className={lbl?.label ? "font-medium" : "font-mono font-medium"}>
                       {title}
                     </span>
-                    {lbl?.env_group ? (
-                      <Badge variant="primary" className="capitalize">{lbl.env_group}</Badge>
-                    ) : null}
                     <Badge variant="muted">
                       {info.type}
                       {version ? ` v${version}` : ""}
@@ -237,7 +236,6 @@ export default function SecretsPage() {
           refPath={editing}
           current={labels?.[labelKey("environment", editing)]}
           nativeName={editing}
-          showEnvGroup
         />
       ) : null}
 

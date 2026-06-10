@@ -1,12 +1,16 @@
-// Pure ACL-policy generator for "scoped access roles" — the mechanism behind
-// shareable env groups and app-specific groups. Given a set of resolved
-// environments × an optional app × a capability level, it emits OpenBao ACL
-// HCL over the KV v2 data/metadata paths. No I/O — easy to unit-test and shown
-// to the operator before it's written.
+// Pure ACL-policy generator for scoped access. Given a set of resolved
+// environments × the secret paths a client may touch × a capability level, it
+// emits native OpenBao ACL HCL over the KV v2 data/metadata paths. No I/O — easy
+// to unit-test and shown to the operator before it's written.
+//
+// Paths are env-relative suffixes that map 1:1 to policy paths:
+//   "backend/*"            -> <mount>/data/backend/*        (a folder, recursive)
+//   "shared/stripe/config" -> <mount>/data/shared/stripe/config  (one secret)
+//   "*"                    -> <mount>/data/*                (the whole environment)
 //
 // Supports both physical layouts:
-//   - mount per environment:        { mount: "prod" }              -> prod/data/<app>/*
-//   - single mount with env folders:{ mount: "secret", envPath: "prod" } -> secret/data/prod/<app>/*
+//   - mount per environment:        { mount: "prod" }                    -> prod/data/<p>
+//   - single mount with env folders:{ mount: "secret", envPath: "prod" } -> secret/data/prod/<p>
 
 export type AccessLevel = "viewer" | "editor" | "admin";
 
@@ -16,17 +20,18 @@ export type EnvTarget = { mount: string; envPath?: string };
 
 export type AccessScope = {
   envs: EnvTarget[];
-  app?: string; // app folder; omit/empty = all apps in the environment
   level: AccessLevel;
+  paths?: string[]; // env-relative path suffixes; empty = whole environment ("*")
 };
 
 const strip = (s: string) => s.replace(/^\/+|\/+$/g, "");
-// Strip anything that isn't path-safe (notably `"` and newlines) so the
-// user-editable mount / env / app names can't break out of the quoted HCL
-// string and inject extra `path` blocks. The UI already constrains these, but
-// the generator must never emit unsafe HCL. Slashes are kept — they're path
-// separators (nested mounts).
+// Strip anything that isn't path-safe (notably `"` and newlines) so a
+// user-editable mount / env name can't break out of the quoted HCL string and
+// inject extra `path` blocks. Slashes are kept (path separators).
 const safe = (s: string) => s.replace(/[^A-Za-z0-9._\-/]/g, "");
+// Like `safe`, but for the selected path suffix where `*` and `+` are legitimate
+// OpenBao glob wildcards.
+const safePath = (s: string) => strip(s).replace(/[^A-Za-z0-9._\-/*+]/g, "");
 const seg = (...parts: (string | undefined)[]) =>
   parts
     .map((p) => safe(strip(p ?? "")))
@@ -50,14 +55,13 @@ const META_CAPS: Record<AccessLevel, string[]> = {
 const capsList = (c: string[]) => c.map((x) => `"${x}"`).join(", ");
 
 /**
- * Build an ACL policy (HCL) for a scoped access role. Paths are de-duplicated
- * and stably ordered. When an `app` is set the grant starts at the app folder
- * (so sibling apps' names aren't even listable); without an app it spans the
- * whole environment.
+ * Build an ACL policy (HCL) granting `level` on the chosen `paths` within each
+ * environment. Paths are de-duplicated and stably ordered. Empty `paths` grants
+ * the whole environment.
  */
 export function buildAccessPolicy(scope: AccessScope): string {
-  const app = scope.app ? safe(strip(scope.app)) : "";
-  const tail = app ? `${app}/*` : `*`;
+  const paths = (scope.paths ?? []).map(safePath).filter(Boolean);
+  const list = paths.length ? paths : ["*"];
 
   const blocks: string[] = [];
   const seen = new Set<string>();
@@ -70,19 +74,17 @@ export function buildAccessPolicy(scope: AccessScope): string {
   for (const env of scope.envs) {
     const dataPrefix = seg(env.mount, "data", env.envPath);
     const metaPrefix = seg(env.mount, "metadata", env.envPath);
-    add(`${dataPrefix}/${tail}`, DATA_CAPS[scope.level]);
-    add(`${metaPrefix}/${tail}`, META_CAPS[scope.level]);
-    // Allow listing the scoped folder node itself so the UI can browse into it
-    // (the app folder when app-scoped, or the env root for a whole-env grant).
-    add(app ? `${metaPrefix}/${app}` : metaPrefix, ["list"]);
+    for (const p of list) {
+      add(`${dataPrefix}/${p}`, DATA_CAPS[scope.level]);
+      add(`${metaPrefix}/${p}`, META_CAPS[scope.level]);
+    }
   }
 
   const where = scope.envs
     .map((e) => seg(e.mount, e.envPath) || strip(e.mount))
     .join(", ");
   const header =
-    `# scoped access — level: ${scope.level}` +
-    `${app ? `, app: ${app}` : ", all apps"}\n` +
+    `# scoped access — level: ${scope.level}, paths: ${list.join(" ")}\n` +
     `# environments: ${where}`;
 
   return `${header}\n${blocks.join("\n")}\n`;

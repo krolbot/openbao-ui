@@ -1,10 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { API_BASE } from "@/lib/base-path";
 
 import { useNamespace } from "@/lib/namespace";
 
-// Client access to per-namespace onboarding progress (/ui/api/onboarding).
+// Client access to per-namespace onboarding progress (/ui2/api/onboarding).
 export type Onboarding = { dismissed?: boolean; steps?: Record<string, boolean> };
 
 export function useOnboarding() {
@@ -13,7 +14,7 @@ export function useOnboarding() {
     queryKey: ["onboarding", namespace],
     queryFn: async (): Promise<Onboarding> => {
       const res = await fetch(
-        `/ui/api/onboarding?namespace=${encodeURIComponent(namespace)}`,
+        `${API_BASE}/onboarding?namespace=${encodeURIComponent(namespace)}`,
         { headers: { "x-vault-namespace": namespace } },
       );
       if (!res.ok) return {};
@@ -29,7 +30,7 @@ export function useSetOnboarding() {
   const { namespace } = useNamespace();
   return useMutation({
     mutationFn: async (patch: Onboarding) => {
-      const res = await fetch(`/ui/api/onboarding`, {
+      const res = await fetch(`${API_BASE}/onboarding`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { API_BASE } from "@/lib/base-path";
 
 import { baoFetch, BaoError } from "@/lib/bao-client";
 import { useNamespace } from "@/lib/namespace";
@@ -15,7 +16,7 @@ export function useRoleTemplates() {
     queryKey: ["role-templates", namespace],
     queryFn: async (): Promise<RoleTemplate[]> => {
       const res = await fetch(
-        `/ui/api/role-templates?namespace=${encodeURIComponent(namespace)}`,
+        `${API_BASE}/role-templates?namespace=${encodeURIComponent(namespace)}`,
         { headers: { "x-vault-namespace": namespace } },
       );
       if (!res.ok) return [];
@@ -31,7 +32,7 @@ export function useSaveRoleTemplates() {
   return useMutation({
     meta: { success: "Roles saved" },
     mutationFn: async (templates: RoleTemplate[]) => {
-      const res = await fetch(`/ui/api/role-templates`, {
+      const res = await fetch(`${API_BASE}/role-templates`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

@@ -1,22 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { BASE_PATH } from "@/lib/base-path";
+
 const COOKIE_NAME = process.env.BAO_COOKIE_NAME ?? "bao_token";
 
 /**
  * Gate authenticated app pages (Next 16 "proxy" convention, formerly
- * middleware). Unauthenticated requests to /ui/* are redirected to /ui/login;
- * the login page and the auth BFF routes stay open.
+ * middleware). Unauthenticated requests to our app (/ui2/*) are redirected to
+ * /ui2/login; the login page and the auth BFF routes stay open.
  *
- * NOTE: this only governs the app's basePath (/ui). The `/v1/*` proxy lives
- * outside basePath (next.config rewrite with basePath:false), so this never
- * runs on it — the unauthenticated bootstrap/discovery calls the login and
- * seal flows make (sys/seal-status, sys/init, sys/unseal,
- * sys/internal/ui/mounts) reach OpenBao directly, by design.
+ * NOTE: this only governs the app's basePath (/ui2). The `/ui/*` stock-UI proxy
+ * and the `/v1/*` API proxy live outside basePath (next.config rewrites with
+ * basePath:false) — we let `/ui/*` pass through untouched (OpenBao's own UI
+ * handles its own auth), and the unauthenticated bootstrap/discovery calls the
+ * login and seal flows make reach OpenBao directly, by design.
  */
 export function proxy(req: NextRequest) {
-  // Normalize away the basePath so the allow-list works regardless of whether
+  const pathname = req.nextUrl.pathname;
+  // OpenBao's stock UI lives at /ui/* (proxied to OpenBao). Let it through — it
+  // is not our app and authenticates itself. Note `/ui2/...` does NOT match
+  // `startsWith("/ui/")`, so our app is still gated below.
+  if (pathname === "/ui" || pathname.startsWith("/ui/")) {
+    return NextResponse.next();
+  }
+
+  // Normalize away our basePath so the allow-list works regardless of whether
   // Next includes it in the pathname for this runtime version.
-  const rel = req.nextUrl.pathname.replace(/^\/ui/, "") || "/";
+  const rel = pathname.replace(new RegExp(`^${BASE_PATH}`), "") || "/";
 
   // API routes self-authenticate and return JSON status codes (never redirect
   // an XHR to the login HTML); only page navigations are gated here. Static
@@ -37,7 +47,7 @@ export function proxy(req: NextRequest) {
 
   const token = req.cookies.get(COOKIE_NAME)?.value;
   if (!token) {
-    return NextResponse.redirect(new URL("/ui/login", req.url));
+    return NextResponse.redirect(new URL(`${BASE_PATH}/login`, req.url));
   }
 
   return NextResponse.next();

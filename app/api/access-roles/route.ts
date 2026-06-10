@@ -10,8 +10,8 @@ import { isOperator } from "@/lib/ui-admin";
  * groups), per namespace. These are the structured intent ({ env selector, app,
  * level }); materializing one into an OpenBao policy + identity group happens
  * client-side. Stored so they're editable and re-syncable.
- *   GET /ui/api/access-roles  — authenticated
- *   PUT /ui/api/access-roles  — operator only (namespace from header)
+ *   GET /ui2/api/access-roles  — authenticated
+ *   PUT /ui2/api/access-roles  — operator only (namespace from header)
  */
 export const dynamic = "force-dynamic";
 

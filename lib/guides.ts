@@ -18,6 +18,45 @@ export type Snippet = { id: string; label: string; lang: string; code: string };
 
 const clean = (s: string) => s.replace(/^\/+|\/+$/g, "");
 
+/**
+ * Admin-side commands to create an **app identity** (an AppRole) — the answer to
+ * "how does my service get a token in production?". Produces a scoped read
+ * policy, an AppRole bound to it, and the role_id / secret_id the app logs in
+ * with. The consumption side is covered by buildSnippets(auth: "approle").
+ */
+export function buildAppRoleSetup(opts: { mount: string; path: string; role?: string }): string {
+  const mount = clean(opts.mount) || "secret";
+  const path = clean(opts.path) || "app/config";
+  const role =
+    (opts.role || path.split("/")[0] || "app").replace(/[^a-zA-Z0-9_-]/g, "-") || "app";
+  return `# Run once as an admin to mint a machine identity for your service.
+
+# 1) A policy granting read on just this secret (least privilege):
+bao policy write ${role}-read - <<'EOF'
+path "${mount}/data/${path}" {
+  capabilities = ["read"]
+}
+path "${mount}/metadata/${path}" {
+  capabilities = ["read"]
+}
+EOF
+
+# 2) Enable the AppRole auth method (no-op if already enabled):
+bao auth enable approle 2>/dev/null || true
+
+# 3) Create a role bound to that policy, issuing short-lived tokens:
+bao write auth/approle/role/${role} \\
+  token_policies="${role}-read" \\
+  token_ttl=1h token_max_ttl=4h secret_id_ttl=24h
+
+# 4) Hand these two values to your app (env vars / secret manager / CI):
+bao read  auth/approle/role/${role}/role-id       # -> ROLE_ID   (stable, low-secrecy)
+bao write -f auth/approle/role/${role}/secret-id  # -> SECRET_ID (sensitive — rotate)
+
+# The app exchanges them for a short-lived token at auth/approle/login
+# (see the snippets below) and renews/re-logs in before token_ttl expires.`;
+}
+
 export function buildSnippets(opts: GuideOptions): Snippet[] {
   const addr = opts.addr.replace(/\/+$/, "") || "https://openbao.example.com";
   const mount = clean(opts.mount) || "secret";

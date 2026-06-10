@@ -9,6 +9,7 @@ import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Disclosure } from "@/components/ui/disclosure";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { API_BASE } from "@/lib/base-path";
 import { baoFetch, BaoError } from "@/lib/bao-client";
 import { useNamespace } from "@/lib/namespace";
 import { useSetUiConfig } from "@/lib/ui-config";
@@ -49,8 +50,8 @@ export function GoogleOidcWizard({
 
   const redirectUri =
     typeof window !== "undefined"
-      ? `${window.location.origin}/ui/api/auth/oidc/callback`
-      : "/ui/api/auth/oidc/callback";
+      ? `${window.location.origin}${API_BASE}/auth/oidc/callback`
+      : `${API_BASE}/auth/oidc/callback`;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

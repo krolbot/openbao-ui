@@ -1,8 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { API_BASE } from "@/lib/base-path";
 
-// Client access to UI configuration (/ui/api/ui-config). Phase 1 wires the
+// Client access to UI configuration (/ui2/api/ui-config). Phase 1 wires the
 // plumbing; Phase 2 (login customization) populates branding / default method.
 
 export type UiConfig = {
@@ -21,7 +22,7 @@ export function useUiConfig() {
   return useQuery({
     queryKey: ["ui-config"],
     queryFn: async (): Promise<UiConfig> => {
-      const res = await fetch(`/ui/api/ui-config`);
+      const res = await fetch(`${API_BASE}/ui-config`);
       if (!res.ok) return {};
       const data = (await res.json()) as { config?: UiConfig };
       return data.config ?? {};
@@ -35,7 +36,7 @@ export function useSetUiConfig() {
   return useMutation({
     meta: { success: "Settings saved" },
     mutationFn: async (patch: UiConfig) => {
-      const res = await fetch(`/ui/api/ui-config`, {
+      const res = await fetch(`${API_BASE}/ui-config`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),

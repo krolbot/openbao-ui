@@ -2,22 +2,19 @@
 
 import * as React from "react";
 
-import { colorDot, LABEL_COLORS } from "@/components/label-editor";
+import { ColorPicker, LABEL_COLORS } from "@/components/label-editor";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label as FieldLabel } from "@/components/ui/label";
 import { useEnableSecretEngine } from "@/lib/kv";
 import { useSetLabel } from "@/lib/labels";
-import { cn } from "@/lib/utils";
 
-const ENV_GROUP_PRESETS = ["dev", "staging", "prod"];
 const stripSlash = (s: string) => s.replace(/^\/+|\/+$/g, "");
 
 /**
  * Create an environment in one step: enable a KV v2 mount, then (optionally)
- * write its presentation label — friendly name, env group, color — so it shows
- * up nicely and can be granted as a group right away.
+ * write its presentation label — friendly name, color — so it shows up nicely.
  */
 export function NewEnvironmentDialog({ onClose }: { onClose: () => void }) {
   const enable = useEnableSecretEngine();
@@ -25,7 +22,6 @@ export function NewEnvironmentDialog({ onClose }: { onClose: () => void }) {
 
   const [path, setPath] = React.useState("");
   const [label, setLabelText] = React.useState("");
-  const [group, setGroup] = React.useState("");
   const [color, setColor] = React.useState<string>(LABEL_COLORS[1]);
   const [description, setDescription] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -43,12 +39,11 @@ export function NewEnvironmentDialog({ onClose }: { onClose: () => void }) {
     try {
       await enable.mutateAsync({ path: mount, description: description.trim() });
       // Only write a label if the operator gave it presentation metadata.
-      if (label.trim() || group.trim() || description.trim()) {
+      if (label.trim() || description.trim()) {
         await setLabel.mutateAsync({
           scope: "environment",
           ref: `${mount}/`,
           label: label.trim() || undefined,
-          env_group: group.trim() || undefined,
           color,
           description: description.trim() || undefined,
         });
@@ -77,24 +72,9 @@ export function NewEnvironmentDialog({ onClose }: { onClose: () => void }) {
           />
         </Field>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Display name (optional)">
-            <Input value={label} onChange={(e) => setLabelText(e.target.value)} placeholder="Production" />
-          </Field>
-          <Field label="Environment group (optional)">
-            <Input
-              value={group}
-              onChange={(e) => setGroup(e.target.value)}
-              list="new-env-group-presets"
-              placeholder="prod — shareable across envs"
-            />
-            <datalist id="new-env-group-presets">
-              {ENV_GROUP_PRESETS.map((g) => (
-                <option key={g} value={g} />
-              ))}
-            </datalist>
-          </Field>
-        </div>
+        <Field label="Display name (optional)">
+          <Input value={label} onChange={(e) => setLabelText(e.target.value)} placeholder="Production" />
+        </Field>
 
         <Field label="Description (optional)">
           <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What this environment holds" />
@@ -102,22 +82,7 @@ export function NewEnvironmentDialog({ onClose }: { onClose: () => void }) {
 
         <div className="flex flex-col gap-2">
           <FieldLabel>Color</FieldLabel>
-          <div className="flex flex-wrap gap-2">
-            {LABEL_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-label={c}
-                onClick={() => setColor(c)}
-                className={cn(
-                  "flex size-7 items-center justify-center rounded-full border-2",
-                  color === c ? "border-foreground" : "border-transparent",
-                )}
-              >
-                <span className={cn("size-4 rounded-full", colorDot(c))} />
-              </button>
-            ))}
-          </div>
+          <ColorPicker value={color} onChange={setColor} />
         </div>
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}

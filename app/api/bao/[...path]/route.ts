@@ -5,7 +5,7 @@ import { OPENBAO_ADDR } from "@/lib/openbao";
 import { getToken } from "@/lib/session";
 
 /**
- * Authenticated passthrough proxy: /ui/api/bao/<path> -> OPENBAO_ADDR/v1/<path>
+ * Authenticated passthrough proxy: /ui2/api/bao/<path> -> OPENBAO_ADDR/v1/<path>
  *
  * Injects the httpOnly token (so it never reaches client JS) and forwards the
  * caller's namespace. Client-side TanStack Query talks only to this route.

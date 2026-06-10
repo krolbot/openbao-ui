@@ -7,8 +7,8 @@ import { isOperator } from "@/lib/ui-admin";
 
 /**
  * UI "nicer naming" labels for namespaces / mounts / paths.
- *   GET  /ui/api/labels?namespace=<ns>[&scope=<scope>]  — any authenticated token
- *   PUT  /ui/api/labels                                  — operator only
+ *   GET  /ui2/api/labels?namespace=<ns>[&scope=<scope>]  — any authenticated token
+ *   PUT  /ui2/api/labels                                  — operator only
  *
  * Reads require only a valid session (labels are non-secret presentation data);
  * writes are CSRF-guarded and gated on mount-management capability.

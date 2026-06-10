@@ -121,11 +121,16 @@ export function useDisableSecretEngine() {
   });
 }
 
-/** Namespaces (best-effort; empty if not permitted or unsupported). */
+/** Namespaces (best-effort; empty if not permitted or unsupported).
+ *  Namespaces are an Enterprise feature — open-source OpenBao returns 404 here,
+ *  which is expected. Cache the result and don't retry so we don't re-probe a
+ *  known-unsupported endpoint on every navigation (avoidable console noise). */
 export function useNamespaces() {
   const { namespace } = useNamespace();
   return useQuery({
     queryKey: ["namespaces", namespace],
+    staleTime: 5 * 60_000,
+    retry: false,
     queryFn: async () => {
       try {
         const res = await baoFetch<{ data: { keys: string[] } }>({

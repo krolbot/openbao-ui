@@ -30,7 +30,7 @@ async function readRecentAuditLog(): Promise<string> {
 }
 
 /**
- * GET /ui/api/audit — reads the file audit device's log (which lives on the
+ * GET /ui2/api/audit — reads the file audit device's log (which lives on the
  * same container as the BFF) and returns the most recent normalized entries.
  * `available:false` means no audit log file exists (e.g. dev mode / not configured).
  */

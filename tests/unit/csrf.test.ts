@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { isCrossSiteRequest } from "@/lib/csrf";
 
 function req(headers: Record<string, string>) {
-  return new Request("http://localhost/ui/api/auth/login", {
+  return new Request("http://localhost/ui2/api/auth/login", {
     method: "POST",
     headers,
   });

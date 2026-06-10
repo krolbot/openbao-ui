@@ -4,7 +4,7 @@ import { openbao, OpenBaoRequestError } from "@/lib/openbao";
 import { clearToken, getToken } from "@/lib/session";
 
 /**
- * GET /ui/api/auth/session — returns info about the current token, or 401 if
+ * GET /ui2/api/auth/session — returns info about the current token, or 401 if
  * there is no valid session. Clears the cookie if the token is no longer valid.
  */
 export async function GET() {

@@ -17,9 +17,10 @@ import {
 import { Disclosure } from "@/components/ui/disclosure";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { API_BASE } from "@/lib/base-path";
 
-const LOGIN_ENDPOINT = "/ui/api/auth/login";
-const OIDC_START = "/ui/api/auth/oidc/start";
+const LOGIN_ENDPOINT = `${API_BASE}/auth/login`;
+const OIDC_START = `${API_BASE}/auth/oidc/start`;
 
 const METHODS = [
   { value: "token", label: "Token" },
@@ -106,7 +107,7 @@ function LoginForm() {
         );
       })
       .catch(() => {});
-    fetch("/ui/api/ui-config")
+    fetch(`${API_BASE}/ui-config`)
       .then((r) => (r.ok ? r.json() : { config: {} }))
       .then((d) => setCfg(d.config ?? {}))
       .catch(() => {});
