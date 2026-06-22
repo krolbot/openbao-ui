@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { BASE_PATH } from "@/lib/base-path";
 import { cn } from "@/lib/utils";
 
 // Underline tab bar shared by the Access / Operations / Settings sections.
 // The active indicator is an inset rounded bar that sits on the header border.
 export function SectionTabs({ tabs }: { tabs: { href: string; label: string }[] }) {
   const pathname = usePathname();
-  const rel = pathname.replace(/^\/ui/, "") || "/";
+  const rel = pathname.replace(new RegExp(`^${BASE_PATH}`), "") || "/";
 
   return (
     <nav className="-mb-px flex gap-1 overflow-x-auto">
