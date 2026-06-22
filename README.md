@@ -99,6 +99,27 @@ Then visit <http://localhost:3000> and log in with token `root`.
   and walks you through the built-in **initialize → save keys → unseal** flow.
   Mount a volume at `/bao/file` to persist storage.
 
+### Versioning & releases (tag parity with OpenBao)
+
+The published image embeds a specific OpenBao version and is **tagged to match
+it**, so picking a tag picks the OpenBao inside:
+
+| Our image (`ghcr.io/hasdfa/openbao-ui`) | Embedded OpenBao |
+| --- | --- |
+| `:2.5.5`, `:2.5`, `:2` | `quay.io/openbao/openbao:2.5.5` |
+| `:latest` | newest released OpenBao |
+| `:sha-<commit>` | immutable, per-commit |
+
+- The version is pinned in **`.openbao-version`** (single source of truth). CI,
+  the published image, and local `docker build` all read it, so the OpenBao
+  binary inside always matches the tag. Override per build with
+  `--build-arg OPENBAO_VERSION=<x.y.z>`.
+- **Auto-release:** `.github/workflows/sync-openbao.yml` runs weekly — when
+  OpenBao cuts a new release it publishes a matching `openbao-ui:<version>`
+  image and opens a PR bumping the pin. So **every new OpenBao release gets a
+  matching UI image automatically.** `publish.yml` also ships on every push to
+  `main` (re-publishing `:latest` + the current version tags).
+
 ## coss ui
 
 Components live in `components/ui/*`. The coss registry is configured in

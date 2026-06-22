@@ -1,0 +1,136 @@
+name: Sync OpenBao release
+
+# Keeps our image in lockstep with OpenBao: whenever OpenBao publishes a new
+# release, build and publish a matching openbao-ui image tagged with the SAME
+# version (tag parity), embedding that exact OpenBao binary — then bump the
+# committed `.openbao-version` pin (via PR) so the repo stays truthful.
+#
+# Runs on a schedule (and on demand). The publish itself is delegated to the
+# reusable publish.yml so there is a single build/tag path.
+on:
+  schedule:
+    - cron: "0 7 * * 1" # weekly, Mondays 07:00 UTC
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Force a specific OpenBao version (e.g. 2.5.5). Blank = latest release."
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    name: Discover latest OpenBao release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      need_publish: ${{ steps.check.outputs.need_publish }}
+      need_bump: ${{ steps.check.outputs.need_bump }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine target version & whether we need to act
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY: ghcr.io
+          IMAGE_NAME: ${{ github.repository }}
+          FORCED: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          # 1) Target version: forced input, else OpenBao's latest (non-pre) release.
+          if [ -n "$FORCED" ]; then
+            version="$FORCED"
+          else
+            version="$(gh api repos/openbao/openbao/releases/latest --jq .tag_name)"
+          fi
+          version="${version#v}" # drop any leading v -> matches OpenBao's image tags
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Unexpected OpenBao version '$version'"; exit 1
+          fi
+          pin="$(tr -d '[:space:]' < .openbao-version)"
+          echo "Latest/target OpenBao = $version ; pinned = $pin"
+
+          # 2) Only move forward — never downgrade if we're already ahead.
+          highest="$(printf '%s\n%s\n' "$version" "$pin" | sort -V | tail -1)"
+          if [ "$highest" != "$version" ]; then
+            echo "Pinned $pin is newer than $version — nothing to do."
+            echo "need_publish=false" >> "$GITHUB_OUTPUT"
+            echo "need_bump=false" >> "$GITHUB_OUTPUT"
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 3) Is this version already published to our registry?
+          echo "${GH_TOKEN}" | docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
+          if docker manifest inspect "${REGISTRY}/${IMAGE_NAME}:${version}" >/dev/null 2>&1; then
+            echo "Image ${IMAGE_NAME}:${version} already published."
+            published=true
+          else
+            published=false
+          fi
+
+          need_publish=false; [ "$published" = "false" ] && need_publish=true
+          need_bump=false; [ "$version" != "$pin" ] && need_bump=true
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "need_publish=$need_publish" >> "$GITHUB_OUTPUT"
+          echo "need_bump=$need_bump" >> "$GITHUB_OUTPUT"
+          echo "::notice::version=$version need_publish=$need_publish need_bump=$need_bump"
+
+  publish:
+    name: Publish matching image
+    needs: discover
+    if: needs.discover.outputs.need_publish == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish.yml
+    with:
+      openbao_version: ${{ needs.discover.outputs.version }}
+      make_latest: true
+    secrets: inherit
+
+  bump-pin:
+    name: Bump .openbao-version (PR)
+    needs: [discover, publish]
+    # Record the new version in the repo even if publish was skipped because the
+    # image already existed; only skip if the publish actually failed.
+    if: always() && needs.discover.outputs.need_bump == 'true' && needs.publish.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open pin-bump PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.discover.outputs.version }}
+        run: |
+          set -euo pipefail
+          branch="chore/openbao-${VERSION}"
+          # Skip if an identical bump branch/PR already exists.
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "Branch $branch already exists — skipping."; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          printf '%s\n' "$VERSION" > .openbao-version
+          # Keep the Dockerfile fallbacks aligned with the pin.
+          sed -i -E "s/^ARG OPENBAO_VERSION=.*/ARG OPENBAO_VERSION=${VERSION}/" Dockerfile docker/Dockerfile.runtime
+          git commit -am "chore: bump OpenBao to ${VERSION}"
+          git push -u origin "$branch"
+          gh pr create \
+            --base "${{ github.event.repository.default_branch }}" \
+            --head "$branch" \
+            --title "chore: bump OpenBao to ${VERSION}" \
+            --body "Automated by \`sync-openbao\`. A matching \`openbao-ui:${VERSION}\` image (tag parity, OpenBao ${VERSION} embedded) has been published to GHCR. This updates the committed \`.openbao-version\` pin and the Dockerfile fallbacks so local builds and the next \`main\` build track the same version."

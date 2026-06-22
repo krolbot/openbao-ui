@@ -50,7 +50,9 @@ jobs:
           mkdir -p ci-ctx/app/.next && cp -r .next/static ci-ctx/app/.next/static
           cp -r public ci-ctx/app/public
           cp docker/entrypoint.sh docker/openbao.hcl ci-ctx/
-          docker build -f docker/Dockerfile.runtime -t openbao-ui:ci ci-ctx
+          docker build -f docker/Dockerfile.runtime \
+            --build-arg OPENBAO_VERSION="$(tr -d '[:space:]' < .openbao-version)" \
+            -t openbao-ui:ci ci-ctx
           docker run -d --name openbao-ui --init -p 3000:3000 \
             -e BAO_DEV=1 -e BAO_DEV_ROOT_TOKEN_ID=root openbao-ui:ci
           ok=""
