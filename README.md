@@ -114,7 +114,7 @@ it**, so picking a tag picks the OpenBao inside:
   the published image, and local `docker build` all read it, so the OpenBao
   binary inside always matches the tag. Override per build with
   `--build-arg OPENBAO_VERSION=<x.y.z>`.
-- **Auto-release:** `.github/workflows/sync-openbao.yml` runs daily — when
+- **Auto-release:** `.github/workflows/sync-openbao.yml` runs weekly — when
   OpenBao cuts a new release it publishes a matching `openbao-ui:<version>`
   image and opens a PR bumping the pin. So **every new OpenBao release gets a
   matching UI image automatically.** `publish.yml` also ships on every push to

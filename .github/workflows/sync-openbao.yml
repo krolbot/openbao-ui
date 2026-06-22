@@ -9,7 +9,7 @@ name: Sync OpenBao release
 # reusable publish.yml so there is a single build/tag path.
 on:
   schedule:
-    - cron: "0 7 * * *" # daily, 07:00 UTC
+    - cron: "0 7 * * 1" # weekly, Mondays 07:00 UTC
   workflow_dispatch:
     inputs:
       version:
