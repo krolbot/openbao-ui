@@ -4,9 +4,12 @@
 #   app/          -> the assembled standalone server (.next/standalone + static + public)
 #   entrypoint.sh -> docker/entrypoint.sh
 #   openbao.hcl   -> docker/openbao.hcl
-# The OpenBao binary is copied from the official image. Override OPENBAO_IMAGE
-# (a pinned tag/digest) for reproducible builds.
-ARG OPENBAO_IMAGE=openbao/openbao:latest
+# The OpenBao binary is copied from the official image, tagged to match this
+# exact OpenBao version (tag parity). CI/publish pass OPENBAO_VERSION explicitly
+# (from the repo's `.openbao-version` pin); this default is the local fallback.
+# Override OPENBAO_IMAGE to pin a digest instead.
+ARG OPENBAO_VERSION=2.5.5
+ARG OPENBAO_IMAGE=quay.io/openbao/openbao:${OPENBAO_VERSION}
 FROM ${OPENBAO_IMAGE} AS openbao
 
 FROM node:22-alpine AS runner

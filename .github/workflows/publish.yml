@@ -1,17 +1,44 @@
 name: Publish image
 
 # Builds the single OpenBao + UI image and publishes it to GitHub Packages
-# (GitHub Container Registry, ghcr.io) on every push to main and on version
-# tags. PR validation (lint/test/e2e) lives in ci.yml.
+# (ghcr.io). The image embeds a specific OpenBao version and is tagged to match
+# it (tag parity): e.g. OpenBao 2.5.5 -> ghcr.io/<repo>:2.5.5, :2.5, :2, :latest
+# — the same tags OpenBao itself publishes — plus an immutable :sha-<commit>.
+#
+# The OpenBao version comes from the repo's `.openbao-version` pin, or from the
+# `openbao_version` input when this workflow is called/dispatched for a specific
+# release (see sync-openbao.yml, which auto-publishes a matching image whenever
+# a new OpenBao version is released).
 #
 # The app is built on the runner and packaged via docker/Dockerfile.runtime —
-# the exact artifact path CI's e2e job exercises — so we ship what we test
-# (and avoid an in-container `pnpm install`).
+# the exact artifact path CI's e2e job exercises — so we ship what we test.
 on:
   push:
     branches: [main]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      openbao_version:
+        description: "OpenBao version to embed + tag (defaults to .openbao-version)"
+        type: string
+        required: false
+        default: ""
+      make_latest:
+        description: "Also move the :latest tag to this build"
+        type: boolean
+        required: false
+        default: true
+  # Callable from sync-openbao.yml to publish a matching image for a new release.
+  workflow_call:
+    inputs:
+      openbao_version:
+        type: string
+        required: false
+        default: ""
+      make_latest:
+        type: boolean
+        required: false
+        default: true
 
 env:
   REGISTRY: ghcr.io
@@ -31,6 +58,39 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+
+      # Resolve the OpenBao version (input wins, else the committed pin) and
+      # derive the parity tag set. The version tag is the contract; latest moves
+      # on default-branch pushes or when explicitly requested.
+      - name: Resolve OpenBao version & image tags
+        id: meta
+        run: |
+          set -euo pipefail
+          version="${{ inputs.openbao_version }}"
+          if [ -z "$version" ]; then version="$(tr -d '[:space:]' < .openbao-version)"; fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Invalid OpenBao version '$version' (expected MAJOR.MINOR.PATCH)"; exit 1
+          fi
+          major="${version%%.*}"; minor="${version#*.}"; minor="${minor%%.*}"
+          img="${REGISTRY}/${IMAGE_NAME}"
+          # tag parity with OpenBao: full, major.minor, major
+          tags="${img}:${version},${img}:${major}.${minor},${img}:${major}"
+          # immutable provenance tag
+          tags="${tags},${img}:sha-$(echo "${GITHUB_SHA}" | cut -c1-12)"
+          # latest: on a push to the default branch, or when a caller asks for it
+          latest="false"
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/${{ github.event.repository.default_branch }}" ]; then
+            latest="true"
+          fi
+          if [ "${{ inputs.make_latest }}" = "true" ] && [ "${{ github.event_name }}" != "push" ]; then
+            latest="true"
+          fi
+          if [ "$latest" = "true" ]; then tags="${tags},${img}:latest"; fi
+          {
+            echo "version=${version}"
+            echo "tags=${tags}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Publishing OpenBao ${version} as:"; printf '  %s\n' ${tags//,/ }
 
       - run: pnpm install --frozen-lockfile
       - name: Build app
@@ -55,26 +115,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Derive image tags & labels
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha
-            type=ref,event=tag
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-
       - name: Build & push
         uses: docker/build-push-action@v6
         with:
           context: ci-ctx
           file: docker/Dockerfile.runtime
           push: true
+          build-args: |
+            OPENBAO_VERSION=${{ steps.meta.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.openbao.version=${{ steps.meta.outputs.version }}
           provenance: false
           cache-from: type=gha
           cache-to: type=gha,mode=max

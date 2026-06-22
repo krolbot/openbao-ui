@@ -7,9 +7,16 @@
 #   - Next proxies /v1/* to OpenBao (see next.config.ts rewrites)
 ###############################################################################
 
-# OpenBao binary source. Override to pin a tag/digest for reproducible builds:
-#   docker build --build-arg OPENBAO_IMAGE=quay.io/openbao/openbao:2.5.4 .
-ARG OPENBAO_IMAGE=quay.io/openbao/openbao:latest
+# OpenBao binary source. The image is tagged to match this exact OpenBao
+# version (tag parity) and the `bao` binary copied below comes from it. Keep
+# OPENBAO_VERSION in sync with the repo's `.openbao-version` pin — CI passes it
+# explicitly (`--build-arg OPENBAO_VERSION=$(cat .openbao-version)`); this
+# default is just the fallback for ad-hoc local builds.
+#   docker build --build-arg OPENBAO_VERSION=2.5.5 .
+# Or override the whole ref to pin a digest:
+#   docker build --build-arg OPENBAO_IMAGE=quay.io/openbao/openbao@sha256:… .
+ARG OPENBAO_VERSION=2.5.5
+ARG OPENBAO_IMAGE=quay.io/openbao/openbao:${OPENBAO_VERSION}
 FROM ${OPENBAO_IMAGE} AS openbao
 
 # --- Stage 1: install dependencies ------------------------------------------
