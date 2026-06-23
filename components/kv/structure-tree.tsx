@@ -51,7 +51,12 @@ export function StructureTree({
   );
 }
 
-type ListResult = { keys: string[]; loading: boolean; forbidden: boolean };
+type ListResult = {
+  keys: string[];
+  loading: boolean;
+  forbidden: boolean;
+  errored: boolean;
+};
 
 function shallowEqual(
   a: Record<string, unknown> | undefined,
@@ -97,15 +102,14 @@ function EnvLister({
   onResult: (mount: string, r: ListResult) => void;
 }) {
   const list = useKvList(mount, path);
-  const forbidden = list.error instanceof BaoError && list.error.status === 403;
+  const status = list.error instanceof BaoError ? list.error.status : undefined;
+  const forbidden = status === 403;
+  // 404 = this folder is simply absent in the env (normal for the union); any
+  // other failure (5xx/transient) is a real error, not "empty".
+  const errored = list.isError && status !== 403 && status !== 404;
   React.useEffect(() => {
-    onResult(mount, {
-      // a 404 (path absent in this env) surfaces as an error → just empty keys
-      keys: list.data ?? [],
-      loading: list.isLoading,
-      forbidden,
-    });
-  }, [mount, list.data, list.isLoading, forbidden, onResult]);
+    onResult(mount, { keys: list.data ?? [], loading: list.isLoading, forbidden, errored });
+  }, [mount, list.data, list.isLoading, forbidden, errored, onResult]);
   return null;
 }
 
@@ -120,19 +124,22 @@ function Children({
   depth: number;
   show: boolean;
 }) {
+  const qc = useQueryClient();
   const [results, onResult] = useEnvResults<ListResult>();
   const [limit, setLimit] = React.useState(PAGE);
 
-  // union of all keys across envs (+ which envs contain each, + which denied the
-  // listing), memoized so it isn't rebuilt on every per-env result report.
-  const { present, keys, anyLoading, forbidden } = React.useMemo(() => {
+  // union of all keys across envs (+ which envs contain each, + which denied or
+  // failed the listing), memoized so it isn't rebuilt on every result report.
+  const { present, keys, anyLoading, forbidden, errored } = React.useMemo(() => {
     const present = new Map<string, Set<string>>();
     const forbidden = new Set<string>();
+    const errored = new Set<string>();
     let anyLoading = false;
     for (const e of envs) {
       const r = results[e.mount];
       if (!r || r.loading) anyLoading = true;
       if (r?.forbidden) forbidden.add(e.mount);
+      if (r?.errored) errored.add(e.mount);
       for (const k of r?.keys ?? []) {
         let set = present.get(k);
         if (!set) present.set(k, (set = new Set()));
@@ -140,7 +147,7 @@ function Children({
       }
     }
     const keys = [...present.keys()].sort((a, b) => a.localeCompare(b));
-    return { present, keys, anyLoading, forbidden };
+    return { present, keys, anyLoading, forbidden, errored };
   }, [envs, results]);
 
   const indent = { paddingLeft: depth * 16 + 12 };
@@ -157,9 +164,21 @@ function Children({
           Loading…
         </p>
       ) : keys.length === 0 ? (
-        // Distinguish "nothing here" from "you can't list here" (403): folding a
-        // forbidden listing into an empty union makes no-access look like no-secrets.
-        forbidden.size > 0 ? (
+        // Distinguish "nothing here" from a failed/denied listing — folding a
+        // 403/5xx into an empty union makes errors look like no-secrets.
+        errored.size > 0 ? (
+          <p className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground" style={indent}>
+            Couldn’t list {errored.size} of {envs.length} environment
+            {envs.length === 1 ? "" : "s"}.
+            <button
+              type="button"
+              onClick={() => qc.invalidateQueries({ queryKey: ["kv-list"] })}
+              className="text-primary hover:underline"
+            >
+              retry
+            </button>
+          </p>
+        ) : forbidden.size > 0 ? (
           <p
             className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground"
             style={indent}
@@ -191,6 +210,7 @@ function Children({
                 depth={depth}
                 present={here}
                 forbidden={forbidden}
+                errored={errored}
                 show={show}
               />
             ) : (
@@ -202,6 +222,7 @@ function Children({
                 depth={depth}
                 present={here}
                 forbidden={forbidden}
+                errored={errored}
                 show={show}
               />
             );
@@ -223,26 +244,34 @@ function Children({
 }
 
 // small colored dots showing which envs contain a path: dimmed where absent,
-// amber-ringed where the env denied the listing (no-access ≠ absent).
+// amber-ringed where the env denied the listing (403), red where it failed
+// (5xx) — so no-access / error don't masquerade as "absent".
 function PresenceDots({
   envs,
   present,
   forbidden,
+  errored,
 }: {
   envs: StructEnv[];
   present: Set<string>;
   forbidden?: Set<string>;
+  errored?: Set<string>;
 }) {
   return (
     <span className="ml-auto flex shrink-0 items-center gap-1 pl-2">
       {envs.map((e) => {
         const has = present.has(e.mount);
         const denied = forbidden?.has(e.mount);
+        const failed = errored?.has(e.mount);
         return (
           <span
             key={e.mount}
-            title={`${e.name}: ${has ? "present" : denied ? "no list access" : "absent"}`}
-            className={cn("rounded-full", denied && "ring-1 ring-amber-500/60")}
+            title={`${e.name}: ${has ? "present" : failed ? "list failed" : denied ? "no list access" : "absent"}`}
+            className={cn(
+              "rounded-full",
+              failed && "ring-1 ring-destructive/60",
+              denied && "ring-1 ring-amber-500/60",
+            )}
           >
             <ColorDot
               color={e.color}
@@ -302,6 +331,7 @@ function FolderRow({
   depth,
   present,
   forbidden,
+  errored,
   show,
 }: {
   envs: StructEnv[];
@@ -310,6 +340,7 @@ function FolderRow({
   depth: number;
   present: Set<string>;
   forbidden: Set<string>;
+  errored: Set<string>;
   show: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
@@ -323,7 +354,7 @@ function FolderRow({
         name={name}
         hint="/"
       >
-        <PresenceDots envs={envs} present={present} forbidden={forbidden} />
+        <PresenceDots envs={envs} present={present} forbidden={forbidden} errored={errored} />
       </Row>
       {open ? <Children envs={envs} rel={rel} depth={depth + 1} show={show} /> : null}
     </>
@@ -337,6 +368,7 @@ function SecretRow({
   depth,
   present,
   forbidden,
+  errored,
   show,
 }: {
   envs: StructEnv[];
@@ -345,6 +377,7 @@ function SecretRow({
   depth: number;
   present: Set<string>;
   forbidden: Set<string>;
+  errored: Set<string>;
   show: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
@@ -357,9 +390,11 @@ function SecretRow({
         icon={FileKey2}
         name={name}
       >
-        <PresenceDots envs={envs} present={present} forbidden={forbidden} />
+        <PresenceDots envs={envs} present={present} forbidden={forbidden} errored={errored} />
       </Row>
-      {open ? <SecretMatrix envs={envs} path={path} show={show} /> : null}
+      {/* `present` here = the envs whose listing contains this key, so the matrix
+          can tell a deleted-but-listed key from a truly absent one. */}
+      {open ? <SecretMatrix envs={envs} path={path} listed={present} show={show} /> : null}
     </>
   );
 }
@@ -399,8 +434,9 @@ function ValueCell({
 type Cell = {
   loading: boolean;
   forbidden: boolean;
-  missing: boolean; // a real 404 → safe to offer "create"
+  missing: boolean; // a real 404
   errored: boolean; // any other read failure → never mislabel as missing
+  exists: boolean; // read returned 200 (secret is present, even if empty/deleted)
   data: Record<string, unknown> | null;
   version?: number;
 };
@@ -413,10 +449,12 @@ type Cell = {
 function SecretMatrix({
   envs,
   path,
+  listed,
   show,
 }: {
   envs: StructEnv[];
   path: string;
+  listed: Set<string>;
   show: boolean;
 }) {
   const qc = useQueryClient();
@@ -434,7 +472,7 @@ function SecretMatrix({
   }, [envs, cells]);
 
   const anyLoading = envs.some((e) => !cells[e.mount] || cells[e.mount].loading);
-  const anyData = envs.some((e) => cells[e.mount]?.data);
+  const anyExists = envs.some((e) => cells[e.mount]?.exists);
   const editEnv = editing ? envs.find((e) => e.mount === editing) : null;
   const editCell = editing ? cells[editing] : undefined;
 
@@ -461,6 +499,7 @@ function SecretMatrix({
                   <div className="mt-1">
                     <EnvAction
                       cell={cells[e.mount]}
+                      listed={listed.has(e.mount)}
                       onEdit={() => setEditing(e.mount)}
                       onRetry={() => qc.invalidateQueries({ queryKey: ["kv-secret"] })}
                     />
@@ -478,9 +517,9 @@ function SecretMatrix({
                 >
                   {anyLoading
                     ? "Loading…"
-                    : anyData
+                    : anyExists
                       ? "This secret has no fields."
-                      : "Not set in any selected environment — use a column's Create."}
+                      : "Not set in any selected environment — use a column's action."}
                 </td>
               </tr>
             ) : (
@@ -529,7 +568,7 @@ function SecretMatrix({
           env={editEnv}
           path={path}
           initial={editCell?.data ?? {}}
-          present={!!editCell?.data}
+          present={!!editCell?.exists}
           version={editCell?.version}
           onClose={() => setEditing(null)}
         />
@@ -553,21 +592,29 @@ function EnvReader({
   const forbidden = status === 403;
   const missing = secret.isError && status === 404;
   const errored = secret.isError && !forbidden && !missing;
-  const data = (secret.data?.data as Record<string, unknown> | null) ?? null;
-  const version = secret.data?.metadata?.version;
+  // React Query keeps the last good data on a failed refetch — only trust it
+  // while the read is currently successful, else a revoked/failed read would
+  // still reveal stale cached values. A 200 read (even of an empty or
+  // soft-deleted version) means the secret exists.
+  const ok = !secret.isError && !!secret.data;
+  const data = ok ? ((secret.data!.data as Record<string, unknown> | null) ?? null) : null;
+  const version = ok ? secret.data!.metadata?.version : undefined;
   React.useEffect(() => {
-    onResult(mount, { loading: secret.isLoading, forbidden, missing, errored, data, version });
-  }, [mount, secret.isLoading, forbidden, missing, errored, data, version, onResult]);
+    onResult(mount, { loading: secret.isLoading, forbidden, missing, errored, exists: ok, data, version });
+  }, [mount, secret.isLoading, forbidden, missing, errored, ok, data, version, onResult]);
   return null;
 }
 
-// Per-column action shown under each environment header.
+// Per-column action shown under each environment header. `listed` = the parent
+// listing saw this key in this env (used to tell a deleted key from an absent one).
 function EnvAction({
   cell,
+  listed,
   onEdit,
   onRetry,
 }: {
   cell?: Cell;
+  listed: boolean;
   onEdit: () => void;
   onRetry: () => void;
 }) {
@@ -592,17 +639,30 @@ function EnvAction({
       </button>
     );
   }
+  // A 200 read (even of an empty/soft-deleted version) → edit (writes a new
+  // version with CAS). A 404 still shown by the listing is a destroyed/deleted
+  // version — creating with cas:0 would fail — so don't offer create for it.
+  if (cell.exists) {
+    return (
+      <button
+        type="button"
+        onClick={onEdit}
+        className="inline-flex items-center gap-1 text-[10px] font-normal text-primary hover:underline"
+      >
+        <Pencil className="size-3" /> edit
+      </button>
+    );
+  }
+  if (listed) {
+    return <span className="text-[10px] font-normal text-muted-foreground">deleted</span>;
+  }
   return (
     <button
       type="button"
       onClick={onEdit}
       className="inline-flex items-center gap-1 text-[10px] font-normal text-primary hover:underline"
     >
-      {cell.data ? (
-        <><Pencil className="size-3" /> edit</>
-      ) : (
-        <><Plus className="size-3" /> create</>
-      )}
+      <Plus className="size-3" /> create
     </button>
   );
 }

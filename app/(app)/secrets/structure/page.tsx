@@ -95,6 +95,10 @@ export default function StructurePage() {
               <Skeleton key={i} className="h-7 w-24 rounded-md" />
             ))}
           </div>
+        ) : mounts.isError ? (
+          <p className="text-sm text-destructive">
+            Could not load mounts. Check your token&apos;s permissions.
+          </p>
         ) : kvMounts.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No KV environments found in this namespace.
@@ -124,7 +128,9 @@ export default function StructurePage() {
         )}
       </div>
 
-      {!mounts.isLoading ? <StructureTree envs={envs} show={show} /> : null}
+      {!mounts.isLoading && !mounts.isError ? (
+        <StructureTree envs={envs} show={show} />
+      ) : null}
     </div>
   );
 }
