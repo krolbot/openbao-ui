@@ -57,9 +57,6 @@ export function StructureTree({
 
 type ListResult = { keys: string[]; loading: boolean; forbidden: boolean };
 
-const sameKeys = (a: string[], b: string[]) =>
-  a.length === b.length && a.every((x, i) => x === b[i]);
-
 // Fetches ONE env's listing at a path and reports it upward. Kept as its own
 // component so we obey rules-of-hooks (one `useKvList` per instance) while still
 // fanning out across a dynamic set of environments.
@@ -102,11 +99,12 @@ function Children({
   const onResult = React.useCallback((mount: string, r: ListResult) => {
     setResults((prev) => {
       const cur = prev[mount];
+      // useKvList yields a stable array ref while unchanged, so identity suffices
       if (
         cur &&
         cur.loading === r.loading &&
         cur.forbidden === r.forbidden &&
-        sameKeys(cur.keys, r.keys)
+        cur.keys === r.keys
       ) {
         return prev;
       }
@@ -114,15 +112,27 @@ function Children({
     });
   }, []);
 
-  // union of all keys across envs, plus which envs contain each key
-  const present = new Map<string, Set<string>>();
-  for (const e of envs) {
-    for (const k of results[e.mount]?.keys ?? []) {
-      (present.get(k) ?? present.set(k, new Set()).get(k)!).add(e.mount);
+  // union of all keys across envs (+ which envs contain each, + which denied the
+  // listing), memoized so it isn't rebuilt on every per-env result report.
+  const { present, keys, anyLoading, forbidden } = React.useMemo(() => {
+    const present = new Map<string, Set<string>>();
+    const forbidden = new Set<string>();
+    let anyLoading = false;
+    for (const e of envs) {
+      const r = results[e.mount];
+      if (!r || r.loading) anyLoading = true;
+      if (r?.forbidden) forbidden.add(e.mount);
+      for (const k of r?.keys ?? []) {
+        let set = present.get(k);
+        if (!set) present.set(k, (set = new Set()));
+        set.add(e.mount);
+      }
     }
-  }
-  const keys = [...present.keys()].sort((a, b) => a.localeCompare(b));
-  const anyLoading = envs.some((e) => !results[e.mount] || results[e.mount].loading);
+    const keys = [...present.keys()].sort((a, b) => a.localeCompare(b));
+    return { present, keys, anyLoading, forbidden };
+  }, [envs, results]);
+
+  const indent = { paddingLeft: depth * 16 + 12 };
 
   return (
     <>
@@ -132,19 +142,25 @@ function Children({
       ))}
 
       {anyLoading && keys.length === 0 ? (
-        <p
-          className="px-3 py-2 text-xs text-muted-foreground"
-          style={{ paddingLeft: depth * 16 + 12 }}
-        >
+        <p className="px-3 py-2 text-xs text-muted-foreground" style={indent}>
           Loading…
         </p>
       ) : keys.length === 0 ? (
-        <p
-          className="px-3 py-2 text-xs text-muted-foreground"
-          style={{ paddingLeft: depth * 16 + 12 }}
-        >
-          (empty)
-        </p>
+        // Distinguish "nothing here" from "you can't list here" (403): folding a
+        // forbidden listing into an empty union makes no-access look like no-secrets.
+        forbidden.size > 0 ? (
+          <p
+            className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground"
+            style={indent}
+          >
+            <Lock className="size-3.5" /> No list access in {forbidden.size} of{" "}
+            {envs.length} environment{envs.length === 1 ? "" : "s"}.
+          </p>
+        ) : (
+          <p className="px-3 py-2 text-xs text-muted-foreground" style={indent}>
+            (empty)
+          </p>
+        )
       ) : (
         <>
           {keys.slice(0, limit).map((k) => {
@@ -152,16 +168,18 @@ function Children({
             const name = k.replace(/\/$/, "");
             const childRel = rel ? `${rel}/${name}` : name;
             const here = present.get(k)!;
+            // Always pass the full env list down: a secret under a folder that's
+            // absent in some envs must still offer those envs a "Create here" cell.
+            // The extra LIST calls for envs lacking the folder just 404 → empty.
             return isFolder ? (
               <FolderRow
                 key={k}
-                // recurse only into envs that actually have this folder
-                envs={envs.filter((e) => here.has(e.mount))}
-                allEnvs={envs}
+                envs={envs}
                 name={name}
                 rel={childRel}
                 depth={depth}
                 present={here}
+                forbidden={forbidden}
                 show={show}
               />
             ) : (
@@ -172,6 +190,7 @@ function Children({
                 path={childRel}
                 depth={depth}
                 present={here}
+                forbidden={forbidden}
                 show={show}
               />
             );
@@ -181,7 +200,7 @@ function Children({
               type="button"
               onClick={() => setLimit((n) => n + PAGE)}
               className="w-full px-3 py-2 text-left text-xs text-primary hover:bg-accent/50"
-              style={{ paddingLeft: depth * 16 + 12 }}
+              style={indent}
             >
               Show {Math.min(PAGE, keys.length - limit)} more… ({keys.length - limit} hidden)
             </button>
@@ -192,23 +211,35 @@ function Children({
   );
 }
 
-// small colored dots showing which envs contain a path (dimmed where absent)
+// small colored dots showing which envs contain a path: dimmed where absent,
+// amber-ringed where the env denied the listing (no-access ≠ absent).
 function PresenceDots({
   envs,
   present,
+  forbidden,
 }: {
   envs: StructEnv[];
   present: Set<string>;
+  forbidden?: Set<string>;
 }) {
   return (
     <span className="ml-auto flex shrink-0 items-center gap-1 pl-2">
-      {envs.map((e) => (
-        <ColorDot
-          key={e.mount}
-          color={e.color}
-          className={cn("size-2", !present.has(e.mount) && "opacity-20 grayscale")}
-        />
-      ))}
+      {envs.map((e) => {
+        const has = present.has(e.mount);
+        const denied = forbidden?.has(e.mount);
+        return (
+          <span
+            key={e.mount}
+            title={`${e.name}: ${has ? "present" : denied ? "no list access" : "absent"}`}
+            className={cn("rounded-full", denied && "ring-1 ring-amber-500/60")}
+          >
+            <ColorDot
+              color={e.color}
+              className={cn("size-2", !has && "opacity-20 grayscale")}
+            />
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -255,19 +286,19 @@ function Row({
 
 function FolderRow({
   envs,
-  allEnvs,
   name,
   rel,
   depth,
   present,
+  forbidden,
   show,
 }: {
   envs: StructEnv[];
-  allEnvs: StructEnv[];
   name: string;
   rel: string;
   depth: number;
   present: Set<string>;
+  forbidden: Set<string>;
   show: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
@@ -281,7 +312,7 @@ function FolderRow({
         name={name}
         hint="/"
       >
-        <PresenceDots envs={allEnvs} present={present} />
+        <PresenceDots envs={envs} present={present} forbidden={forbidden} />
       </Row>
       {open ? <Children envs={envs} rel={rel} depth={depth + 1} show={show} /> : null}
     </>
@@ -294,6 +325,7 @@ function SecretRow({
   path,
   depth,
   present,
+  forbidden,
   show,
 }: {
   envs: StructEnv[];
@@ -301,6 +333,7 @@ function SecretRow({
   path: string;
   depth: number;
   present: Set<string>;
+  forbidden: Set<string>;
   show: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
@@ -313,7 +346,7 @@ function SecretRow({
         icon={FileKey2}
         name={name}
       >
-        <PresenceDots envs={envs} present={present} />
+        <PresenceDots envs={envs} present={present} forbidden={forbidden} />
       </Row>
       {open ? (
         <div className="border-b bg-muted/20 px-3 py-3">
@@ -346,6 +379,11 @@ function EnvCell({
 
   const status = secret.error instanceof BaoError ? secret.error.status : undefined;
   const forbidden = status === 403;
+  // Only a real 404 means "doesn't exist here" → offer create. Other failures
+  // (5xx/transient/network) are surfaced as errors so we never mislabel an
+  // existing-but-unreadable secret as missing (and then clobber it on write).
+  const missing = secret.isError && status === 404;
+  const errored = secret.isError && !forbidden && !missing;
   const present = !secret.isError && !!secret.data;
   const data = (secret.data?.data as Record<string, unknown> | null) ?? null;
   const version = secret.data?.metadata?.version;
@@ -377,7 +415,9 @@ function EnvCell({
         </span>
         {forbidden ? (
           <Badge variant="muted" className="ml-auto shrink-0">no access</Badge>
-        ) : !present && !secret.isLoading && !editing ? (
+        ) : errored ? (
+          <Badge variant="muted" className="ml-auto shrink-0">error</Badge>
+        ) : missing && !editing ? (
           <Badge variant="muted" className="ml-auto shrink-0">no secret</Badge>
         ) : null}
       </div>
@@ -389,6 +429,13 @@ function EnvCell({
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Lock className="size-3.5" /> Your token can&apos;t read this environment.
           </p>
+        ) : errored ? (
+          <div className="flex flex-col items-start gap-2 py-1">
+            <p className="text-xs text-destructive">{errMsg(secret.error)}</p>
+            <Button size="sm" variant="outline" onClick={() => secret.refetch()}>
+              Retry
+            </Button>
+          </div>
         ) : editing ? (
           <>
             {error ? <p className="mb-2 text-xs text-destructive">{error}</p> : null}

@@ -12,34 +12,47 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMounts } from "@/lib/kv";
 import { labelKey, useLabels } from "@/lib/labels";
+import { useNamespace } from "@/lib/namespace";
 import { cn } from "@/lib/utils";
 
 export default function StructurePage() {
+  const { namespace } = useNamespace();
   const mounts = useMounts();
   const { data: labels } = useLabels();
 
-  const kvMounts = Object.entries(mounts.data ?? {})
-    .filter(([, v]) => v.type === "kv" || v.type === "generic")
-    .map(([p]) => p.replace(/\/$/, ""));
+  const kvMounts = React.useMemo(
+    () =>
+      Object.entries(mounts.data ?? {})
+        .filter(([, v]) => v.type === "kv" || v.type === "generic")
+        .map(([p]) => p.replace(/\/$/, "")),
+    [mounts.data],
+  );
   const env = (m: string) => labels?.[labelKey("environment", `${m}/`)];
   const envName = (m: string) => env(m)?.label || m;
   const envColor = (m: string) => env(m)?.color ?? null;
 
-  const [selected, setSelected] = React.useState<string[]>([]);
+  // `null` = nothing chosen yet → default to all environments (avoids a
+  // default-select effect). Reset on namespace switch so a stale selection from
+  // another namespace can't hide the new namespace's environments.
+  const [selected, setSelected] = React.useState<string[] | null>(null);
   const [show, setShow] = React.useState(false);
+  React.useEffect(() => setSelected(null), [namespace]);
 
-  // default-select all KV mounts once they load
-  React.useEffect(() => {
-    if (kvMounts.length && selected.length === 0) setSelected(kvMounts);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounts.data]);
+  // Reconcile against the live mount set: an explicit selection still drops
+  // mounts that no longer exist; no selection means "all".
+  const active = selected
+    ? selected.filter((m) => kvMounts.includes(m))
+    : kvMounts;
 
   function toggle(m: string) {
-    setSelected((s) => (s.includes(m) ? s.filter((x) => x !== m) : [...s, m]));
+    setSelected((s) => {
+      const base = s ?? kvMounts;
+      return base.includes(m) ? base.filter((x) => x !== m) : [...base, m];
+    });
   }
 
   const envs: StructEnv[] = kvMounts
-    .filter((m) => selected.includes(m))
+    .filter((m) => active.includes(m))
     .map((m) => ({ mount: m, name: envName(m), color: envColor(m) }));
 
   return (
@@ -84,12 +97,12 @@ export default function StructurePage() {
                 key={m}
                 className={cn(
                   "flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-1 text-sm",
-                  selected.includes(m) ? "border-primary bg-accent" : "text-muted-foreground",
+                  active.includes(m) ? "border-primary bg-accent" : "text-muted-foreground",
                 )}
               >
                 <input
                   type="checkbox"
-                  checked={selected.includes(m)}
+                  checked={active.includes(m)}
                   onChange={() => toggle(m)}
                 />
                 <ColorDot color={envColor(m)} className="size-2.5 shrink-0" />
