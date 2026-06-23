@@ -29,6 +29,17 @@ export async function POST(req: NextRequest) {
 
   try {
     const res = await openbao.oidcAuthURL(mount, body.role, redirectUri, nonce);
+    // OpenBao returns 200 with an empty auth_url (no error) when the role's
+    // allowed_redirect_uris doesn't include this exact URI, or role_type isn't
+    // "oidc". Surface that as an actionable error instead of a silent dead-end.
+    if (!res.data.auth_url) {
+      return NextResponse.json(
+        {
+          error: `OpenBao returned no authorization URL. Add "${redirectUri}" to the "${body.role || "default"}" role's allowed_redirect_uris and ensure role_type is "oidc".`,
+        },
+        { status: 400 },
+      );
+    }
     const store = await cookies();
     const opts = {
       httpOnly: true as const,

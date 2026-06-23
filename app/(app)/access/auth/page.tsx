@@ -11,6 +11,7 @@ import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Disclosure } from "@/components/ui/disclosure";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { API_BASE } from "@/lib/base-path";
 import { BaoError } from "@/lib/bao-client";
 import {
   AuthMount,
@@ -584,7 +585,12 @@ type FieldSpec = {
   label: string;
   kind?: "text" | "password" | "textarea" | "list";
   placeholder?: string;
+  /** Prefilled when adding a new role. `{redirect_uri}` expands to this app's
+   *  OIDC callback so OIDC roles work out of the box. */
+  default?: string;
 };
+
+const REDIRECT_URI_TOKEN = "{redirect_uri}";
 
 type MethodSpec = {
   config: FieldSpec[];
@@ -649,7 +655,22 @@ const FIELD_SPECS: Record<string, MethodSpec> = {
     },
   },
 };
-FIELD_SPECS.oidc = FIELD_SPECS.jwt;
+// OIDC reuses JWT's fields, but a working sign-in role needs role_type "oidc"
+// and this app's callback in allowed_redirect_uris — prefill both so a role
+// created here doesn't yield an empty auth_url at login.
+FIELD_SPECS.oidc = {
+  ...FIELD_SPECS.jwt,
+  roles: {
+    ...FIELD_SPECS.jwt.roles!,
+    fields: FIELD_SPECS.jwt.roles!.fields.map((f) =>
+      f.key === "allowed_redirect_uris"
+        ? { ...f, default: REDIRECT_URI_TOKEN }
+        : f.key === "role_type"
+          ? { ...f, default: "oidc" }
+          : f,
+    ),
+  },
+};
 
 function buildBody(fields: FieldSpec[], vals: Record<string, string>) {
   const body: Record<string, unknown> = {};
@@ -784,8 +805,18 @@ function RolesPanel({
           size="sm"
           variant="outline"
           onClick={() => {
+            const redirectUri =
+              typeof window !== "undefined"
+                ? `${window.location.origin}${API_BASE}/auth/oidc/callback`
+                : "";
+            const init: Record<string, string> = {};
+            for (const f of spec.fields) {
+              if (f.default != null) {
+                init[f.key] = f.default.replace(REDIRECT_URI_TOKEN, redirectUri);
+              }
+            }
             setName("");
-            setVals({});
+            setVals(init);
             setError(null);
             setOpen(true);
           }}

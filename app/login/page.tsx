@@ -132,12 +132,12 @@ function LoginForm() {
     setError(null);
     setLoading(true);
     const { authUrl, error } = await startOidc(mount);
-    if (error) {
-      setError(error);
+    if (error || !authUrl) {
+      setError(error ?? "OpenBao returned no sign-in URL — check the OIDC role's allowed_redirect_uris.");
       setLoading(false);
       return;
     }
-    if (authUrl) window.location.href = authUrl;
+    window.location.href = authUrl;
   }
 
   async function submit(e: React.FormEvent) {
