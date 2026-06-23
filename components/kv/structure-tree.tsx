@@ -1,15 +1,11 @@
 "use client";
 
 import { ChevronRight, FileKey2, Folder, Lock, Pencil, Plus } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
 import { ColorDot } from "@/components/label-editor";
-import {
-  EditorHandle,
-  KvKeyValueEditor,
-  KvValueViewer,
-} from "@/components/kv/kv-fields";
-import { Badge } from "@/components/ui/badge";
+import { EditorHandle, KvKeyValueEditor } from "@/components/kv/kv-fields";
 import { Button } from "@/components/ui/button";
 import { BaoError } from "@/lib/bao-client";
 import { useKvList, useKvSecret, useKvWrite } from "@/lib/kv";
@@ -348,45 +344,265 @@ function SecretRow({
       >
         <PresenceDots envs={envs} present={present} forbidden={forbidden} />
       </Row>
-      {open ? (
-        <div className="border-b bg-muted/20 px-3 py-3">
-          <div className="flex gap-3 overflow-x-auto">
-            {envs.map((e) => (
-              <EnvCell key={e.mount} env={e} path={path} show={show} />
-            ))}
-          </div>
-        </div>
-      ) : null}
+      {open ? <SecretMatrix envs={envs} path={path} show={show} /> : null}
     </>
   );
 }
 
-// Self-contained per-environment cell: own read, own edit state, own write.
-function EnvCell({
-  env,
+const display = (v: unknown) => (typeof v === "string" ? v : JSON.stringify(v));
+
+type Cell = {
+  loading: boolean;
+  forbidden: boolean;
+  missing: boolean; // a real 404 → safe to offer "create"
+  errored: boolean; // any other read failure → never mislabel as missing
+  data: Record<string, unknown> | null;
+  version?: number;
+};
+
+/**
+ * Expanded secret: a field × environment matrix — one row per key, one column
+ * per environment, values side-by-side (like Compare). Each column has an
+ * edit/create action that opens the full key/value editor beneath the table.
+ */
+function SecretMatrix({
+  envs,
   path,
   show,
 }: {
-  env: StructEnv;
+  envs: StructEnv[];
   path: string;
   show: boolean;
 }) {
-  const secret = useKvSecret(env.mount, path);
-  const write = useKvWrite(env.mount, path);
-  const [editing, setEditing] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const editorRef = React.useRef<EditorHandle>(null);
+  const qc = useQueryClient();
+  const [cells, setCells] = React.useState<Record<string, Cell>>({});
+  const [editing, setEditing] = React.useState<string | null>(null);
 
+  const onCell = React.useCallback((mount: string, c: Cell) => {
+    setCells((prev) => {
+      const p = prev[mount];
+      if (
+        p &&
+        p.loading === c.loading &&
+        p.forbidden === c.forbidden &&
+        p.missing === c.missing &&
+        p.errored === c.errored &&
+        p.data === c.data &&
+        p.version === c.version
+      ) {
+        return prev;
+      }
+      return { ...prev, [mount]: c };
+    });
+  }, []);
+
+  // union of field keys across every environment that has the secret
+  const keys = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const e of envs) {
+      const d = cells[e.mount]?.data;
+      if (d) for (const k of Object.keys(d)) set.add(k);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [envs, cells]);
+
+  const anyLoading = envs.some((e) => !cells[e.mount] || cells[e.mount].loading);
+  const anyData = envs.some((e) => cells[e.mount]?.data);
+  const editEnv = editing ? envs.find((e) => e.mount === editing) : null;
+  const editCell = editing ? cells[editing] : undefined;
+
+  return (
+    <div className="border-b bg-muted/20 px-3 py-3">
+      {/* hidden per-env readers (one useKvSecret each) */}
+      {envs.map((e) => (
+        <EnvReader key={e.mount} mount={e.mount} path={path} onResult={onCell} />
+      ))}
+
+      <div className="overflow-x-auto rounded-lg border bg-card">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40 text-left text-xs">
+            <tr>
+              <th className="px-3 py-2 align-bottom font-medium text-muted-foreground">
+                Field
+              </th>
+              {envs.map((e) => (
+                <th key={e.mount} className="px-3 py-2 align-bottom font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <ColorDot color={e.color} className="size-2 shrink-0" />
+                    <span className="truncate" title={e.mount}>{e.name}</span>
+                  </div>
+                  <div className="mt-1">
+                    <EnvAction
+                      cell={cells[e.mount]}
+                      onEdit={() => setEditing(e.mount)}
+                      onRetry={() => qc.invalidateQueries({ queryKey: ["kv-secret"] })}
+                    />
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {keys.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={envs.length + 1}
+                  className="px-3 py-4 text-center text-xs text-muted-foreground"
+                >
+                  {anyLoading
+                    ? "Loading…"
+                    : anyData
+                      ? "This secret has no fields."
+                      : "Not set in any selected environment — use a column's Create."}
+                </td>
+              </tr>
+            ) : (
+              keys.map((k) => {
+                const cols = envs.map((e) => {
+                  const c = cells[e.mount];
+                  const has = !!c?.data && k in c.data!;
+                  return { e, c, has, v: has ? display(c!.data![k]) : null };
+                });
+                // highlight a key whose value isn't identical across the envs
+                // that actually have the secret (different, or absent in some)
+                const haveSecret = cols.filter((x) => x.c?.data);
+                const distinct = new Set(haveSecret.filter((x) => x.has).map((x) => x.v));
+                const differs =
+                  haveSecret.length > 1 &&
+                  (distinct.size > 1 || haveSecret.some((x) => !x.has));
+                return (
+                  <tr key={k}>
+                    <td className="px-3 py-2 align-top font-mono font-medium">
+                      {k}
+                      {differs ? (
+                        <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-normal text-amber-600">
+                          differs
+                        </span>
+                      ) : null}
+                    </td>
+                    {cols.map(({ e, c, has, v }) => (
+                      <td
+                        key={e.mount}
+                        className="px-3 py-2 align-top font-mono text-muted-foreground"
+                      >
+                        {has ? (
+                          <span className="break-all">{show ? v : "••••••••"}</span>
+                        ) : (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {editEnv ? (
+        <EnvEditor
+          key={editEnv.mount}
+          env={editEnv}
+          path={path}
+          initial={editCell?.data ?? {}}
+          present={!!editCell?.data}
+          version={editCell?.version}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+// Reads ONE env's secret and reports its state up (one useKvSecret per instance).
+function EnvReader({
+  mount,
+  path,
+  onResult,
+}: {
+  mount: string;
+  path: string;
+  onResult: (mount: string, c: Cell) => void;
+}) {
+  const secret = useKvSecret(mount, path);
   const status = secret.error instanceof BaoError ? secret.error.status : undefined;
   const forbidden = status === 403;
-  // Only a real 404 means "doesn't exist here" → offer create. Other failures
-  // (5xx/transient/network) are surfaced as errors so we never mislabel an
-  // existing-but-unreadable secret as missing (and then clobber it on write).
   const missing = secret.isError && status === 404;
   const errored = secret.isError && !forbidden && !missing;
-  const present = !secret.isError && !!secret.data;
   const data = (secret.data?.data as Record<string, unknown> | null) ?? null;
   const version = secret.data?.metadata?.version;
+  React.useEffect(() => {
+    onResult(mount, { loading: secret.isLoading, forbidden, missing, errored, data, version });
+  }, [mount, secret.isLoading, forbidden, missing, errored, data, version, onResult]);
+  return null;
+}
+
+// Per-column action shown under each environment header.
+function EnvAction({
+  cell,
+  onEdit,
+  onRetry,
+}: {
+  cell?: Cell;
+  onEdit: () => void;
+  onRetry: () => void;
+}) {
+  if (!cell || cell.loading) {
+    return <span className="text-[10px] font-normal text-muted-foreground">loading…</span>;
+  }
+  if (cell.forbidden) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-normal text-muted-foreground">
+        <Lock className="size-3" /> no access
+      </span>
+    );
+  }
+  if (cell.errored) {
+    return (
+      <button
+        type="button"
+        onClick={onRetry}
+        className="inline-flex items-center gap-1 text-[10px] font-normal text-destructive hover:underline"
+      >
+        error · retry
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onEdit}
+      className="inline-flex items-center gap-1 text-[10px] font-normal text-primary hover:underline"
+    >
+      {cell.data ? (
+        <><Pencil className="size-3" /> edit</>
+      ) : (
+        <><Plus className="size-3" /> create</>
+      )}
+    </button>
+  );
+}
+
+// Full key/value editor for one environment, shown beneath the matrix.
+function EnvEditor({
+  env,
+  path,
+  initial,
+  present,
+  version,
+  onClose,
+}: {
+  env: StructEnv;
+  path: string;
+  initial: Record<string, unknown>;
+  present: boolean;
+  version?: number;
+  onClose: () => void;
+}) {
+  const write = useKvWrite(env.mount, path);
+  const [error, setError] = React.useState<string | null>(null);
+  const editorRef = React.useRef<EditorHandle>(null);
 
   async function save() {
     setError(null);
@@ -400,82 +616,28 @@ function EnvCell({
     try {
       // existing secret → CAS on current version; create → cas:0 (v1 ignores it)
       await write.mutateAsync({ data: payload, cas: present ? version : 0 });
-      setEditing(false);
+      onClose();
     } catch (e) {
       setError(errMsg(e));
     }
   }
 
   return (
-    <div className="w-72 shrink-0 rounded-lg border bg-card">
-      <div className="flex items-center gap-2 border-b px-3 py-2">
+    <div className="mt-3 rounded-lg border bg-card p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm font-medium">
         <ColorDot color={env.color} className="size-2.5 shrink-0" />
-        <span className="min-w-0 truncate text-sm font-medium" title={env.mount}>
-          {env.name}
-        </span>
-        {forbidden ? (
-          <Badge variant="muted" className="ml-auto shrink-0">no access</Badge>
-        ) : errored ? (
-          <Badge variant="muted" className="ml-auto shrink-0">error</Badge>
-        ) : missing && !editing ? (
-          <Badge variant="muted" className="ml-auto shrink-0">no secret</Badge>
-        ) : null}
+        {present ? "Edit in" : "Create in"} {env.name}
+        <span className="font-mono text-xs font-normal text-muted-foreground">{path}</span>
       </div>
-
-      <div className="p-3">
-        {secret.isLoading ? (
-          <p className="text-xs text-muted-foreground">Loading…</p>
-        ) : forbidden ? (
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Lock className="size-3.5" /> Your token can&apos;t read this environment.
-          </p>
-        ) : errored ? (
-          <div className="flex flex-col items-start gap-2 py-1">
-            <p className="text-xs text-destructive">{errMsg(secret.error)}</p>
-            <Button size="sm" variant="outline" onClick={() => secret.refetch()}>
-              Retry
-            </Button>
-          </div>
-        ) : editing ? (
-          <>
-            {error ? <p className="mb-2 text-xs text-destructive">{error}</p> : null}
-            <KvKeyValueEditor ref={editorRef} initial={data ?? {}} />
-            <div className="mt-3 flex gap-2">
-              <Button size="sm" onClick={save} disabled={write.isPending}>
-                {write.isPending ? "Saving…" : present ? "Save new version" : "Create"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setEditing(false);
-                  setError(null);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </>
-        ) : present ? (
-          <>
-            <KvValueViewer data={data ?? {}} reveal={show} />
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-3"
-              onClick={() => setEditing(true)}
-            >
-              <Pencil /> Edit
-            </Button>
-          </>
-        ) : (
-          <div className="flex flex-col items-start gap-2 py-1">
-            <p className="text-xs text-muted-foreground">No secret at this path here.</p>
-            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-              <Plus /> Create here
-            </Button>
-          </div>
-        )}
+      {error ? <p className="mb-2 text-xs text-destructive">{error}</p> : null}
+      <KvKeyValueEditor ref={editorRef} initial={initial} />
+      <div className="mt-3 flex gap-2">
+        <Button size="sm" onClick={save} disabled={write.isPending}>
+          {write.isPending ? "Saving…" : present ? "Save new version" : "Create"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
       </div>
     </div>
   );

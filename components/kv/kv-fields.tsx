@@ -15,12 +15,8 @@ function display(value: unknown): string {
 // --- read-only viewer: masked values + per-row show/hide + copy ---
 export function KvValueViewer({
   data,
-  reveal,
 }: {
   data: Record<string, unknown>;
-  // Optional external control of masking (e.g. a page-level "Show values"
-  // toggle). When provided it drives the rows; each row's own eye still works.
-  reveal?: boolean;
 }) {
   const entries = Object.entries(data);
   if (entries.length === 0) {
@@ -33,27 +29,15 @@ export function KvValueViewer({
   return (
     <ul className="divide-y rounded-md border">
       {entries.map(([k, v]) => (
-        <ViewerRow key={k} name={k} value={display(v)} reveal={reveal} />
+        <ViewerRow key={k} name={k} value={display(v)} />
       ))}
     </ul>
   );
 }
 
-function ViewerRow({
-  name,
-  value,
-  reveal,
-}: {
-  name: string;
-  value: string;
-  reveal?: boolean;
-}) {
+function ViewerRow({ name, value }: { name: string; value: string }) {
   const { prefs } = usePreferences();
-  const [shown, setShown] = React.useState(reveal ?? prefs.revealSecrets);
-  // follow an external reveal toggle when one is supplied
-  React.useEffect(() => {
-    if (reveal !== undefined) setShown(reveal);
-  }, [reveal]);
+  const [shown, setShown] = React.useState(prefs.revealSecrets);
   return (
     <li className="flex items-center gap-2 px-3 py-2 text-sm">
       <span className="w-1/3 shrink-0 truncate font-mono font-medium">
