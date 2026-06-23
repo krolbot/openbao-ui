@@ -103,7 +103,7 @@ test("structure: cross-environment tree shows a secret and its values", async ({
   await page.goto("/ui2/secrets");
   await page.getByRole("link", { name: "Structure" }).click();
   await expect(page.getByRole("heading", { name: "Structure" })).toBeVisible();
-  await expect(page.getByText("Environments")).toBeVisible();
+  await expect(page.getByText("Environments", { exact: true })).toBeVisible();
 
   // drill into the union tree: folder -> secret -> per-environment column
   await page.getByRole("button", { name: new RegExp(folder) }).click();
