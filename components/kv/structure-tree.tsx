@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, FileKey2, Folder, Lock, Pencil, Plus } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, FileKey2, Folder, Lock, Pencil, Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -351,6 +351,36 @@ function SecretRow({
 
 const display = (v: unknown) => (typeof v === "string" ? v : JSON.stringify(v));
 
+// One value, masked by default with its own reveal toggle. The page-level
+// "Show values" sets the baseline; the eye flips an individual value.
+function ValueCell({
+  value,
+  has,
+  defaultShown,
+}: {
+  value: string | null;
+  has: boolean;
+  defaultShown: boolean;
+}) {
+  const [shown, setShown] = React.useState(defaultShown);
+  // follow the page-level toggle when it changes
+  React.useEffect(() => setShown(defaultShown), [defaultShown]);
+  if (!has) return <span className="text-muted-foreground/40">—</span>;
+  return (
+    <span className="inline-flex items-start gap-1.5">
+      <span className="break-all">{shown ? value : "••••••••"}</span>
+      <button
+        type="button"
+        onClick={() => setShown((s) => !s)}
+        title={shown ? "Hide value" : "Reveal value"}
+        className="mt-0.5 shrink-0 rounded p-0.5 text-muted-foreground/50 hover:bg-accent hover:text-foreground"
+      >
+        {shown ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+      </button>
+    </span>
+  );
+}
+
 type Cell = {
   loading: boolean;
   forbidden: boolean;
@@ -480,16 +510,12 @@ function SecretMatrix({
                         </span>
                       ) : null}
                     </td>
-                    {cols.map(({ e, c, has, v }) => (
+                    {cols.map(({ e, has, v }) => (
                       <td
                         key={e.mount}
                         className="px-3 py-2 align-top font-mono text-muted-foreground"
                       >
-                        {has ? (
-                          <span className="break-all">{show ? v : "••••••••"}</span>
-                        ) : (
-                          <span className="text-muted-foreground/40">—</span>
-                        )}
+                        <ValueCell value={v} has={has} defaultShown={show} />
                       </td>
                     ))}
                   </tr>
