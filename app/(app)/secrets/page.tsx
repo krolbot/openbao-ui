@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Database, GitCompare, KeyRound, Lock, Package, Pencil, Plus, ScrollText, Settings, Terminal, Trash2, Users } from "lucide-react";
+import { Box, Database, GitCompare, KeyRound, Lock, Network, Package, Pencil, Plus, ScrollText, Settings, Terminal, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
@@ -105,6 +105,11 @@ export default function SecretsPage() {
             <Link href="/secrets/apps">
               <Button variant="outline" size="sm">
                 <Package /> Apps
+              </Button>
+            </Link>
+            <Link href="/secrets/structure">
+              <Button variant="outline" size="sm">
+                <Network /> Structure
               </Button>
             </Link>
             <Link href="/secrets/compare">
