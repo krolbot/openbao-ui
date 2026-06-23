@@ -53,6 +53,37 @@ export function StructureTree({
 
 type ListResult = { keys: string[]; loading: boolean; forbidden: boolean };
 
+function shallowEqual(
+  a: Record<string, unknown> | undefined,
+  b: Record<string, unknown>,
+): boolean {
+  if (a === b) return true;
+  if (!a) return false;
+  const ak = Object.keys(a);
+  return ak.length === Object.keys(b).length && ak.every((k) => a[k] === b[k]);
+}
+
+/**
+ * Collects one value per environment into a map. The per-env reporter children
+ * (EnvLister/EnvReader) push their latest state through `report`; no-op updates
+ * are dropped (shallow compare) so reporting doesn't churn renders. TanStack's
+ * structural sharing keeps `data`/`keys` refs stable, so identity holds.
+ */
+function useEnvResults<T>() {
+  const [results, setResults] = React.useState<Record<string, T>>({});
+  const report = React.useCallback((mount: string, value: T) => {
+    setResults((prev) =>
+      shallowEqual(
+        prev[mount] as Record<string, unknown> | undefined,
+        value as Record<string, unknown>,
+      )
+        ? prev
+        : { ...prev, [mount]: value },
+    );
+  }, []);
+  return [results, report] as const;
+}
+
 // Fetches ONE env's listing at a path and reports it upward. Kept as its own
 // component so we obey rules-of-hooks (one `useKvList` per instance) while still
 // fanning out across a dynamic set of environments.
@@ -89,24 +120,8 @@ function Children({
   depth: number;
   show: boolean;
 }) {
-  const [results, setResults] = React.useState<Record<string, ListResult>>({});
+  const [results, onResult] = useEnvResults<ListResult>();
   const [limit, setLimit] = React.useState(PAGE);
-
-  const onResult = React.useCallback((mount: string, r: ListResult) => {
-    setResults((prev) => {
-      const cur = prev[mount];
-      // useKvList yields a stable array ref while unchanged, so identity suffices
-      if (
-        cur &&
-        cur.loading === r.loading &&
-        cur.forbidden === r.forbidden &&
-        cur.keys === r.keys
-      ) {
-        return prev;
-      }
-      return { ...prev, [mount]: r };
-    });
-  }, []);
 
   // union of all keys across envs (+ which envs contain each, + which denied the
   // listing), memoized so it isn't rebuilt on every per-env result report.
@@ -405,26 +420,8 @@ function SecretMatrix({
   show: boolean;
 }) {
   const qc = useQueryClient();
-  const [cells, setCells] = React.useState<Record<string, Cell>>({});
+  const [cells, onCell] = useEnvResults<Cell>();
   const [editing, setEditing] = React.useState<string | null>(null);
-
-  const onCell = React.useCallback((mount: string, c: Cell) => {
-    setCells((prev) => {
-      const p = prev[mount];
-      if (
-        p &&
-        p.loading === c.loading &&
-        p.forbidden === c.forbidden &&
-        p.missing === c.missing &&
-        p.errored === c.errored &&
-        p.data === c.data &&
-        p.version === c.version
-      ) {
-        return prev;
-      }
-      return { ...prev, [mount]: c };
-    });
-  }, []);
 
   // union of field keys across every environment that has the secret
   const keys = React.useMemo(() => {

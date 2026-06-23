@@ -51,9 +51,18 @@ export default function StructurePage() {
     });
   }
 
-  const envs: StructEnv[] = kvMounts
-    .filter((m) => active.includes(m))
-    .map((m) => ({ mount: m, name: envName(m), color: envColor(m) }));
+  // Memoized so an unrelated re-render (e.g. toggling "Show values") doesn't
+  // hand StructureTree a fresh array and force the whole tree to reconcile.
+  const envs: StructEnv[] = React.useMemo(
+    () =>
+      kvMounts
+        .filter((m) => active.includes(m))
+        .map((m) => {
+          const l = labels?.[labelKey("environment", `${m}/`)];
+          return { mount: m, name: l?.label || m, color: l?.color ?? null };
+        }),
+    [kvMounts, active, labels],
+  );
 
   return (
     <div className="mx-auto max-w-6xl p-8">
