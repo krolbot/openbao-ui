@@ -82,6 +82,40 @@ test("kv: deep-link straight to a secret resolves (no 404)", async ({ page }) =>
   await expect(page.getByText("version 1")).toBeVisible();
 });
 
+test("structure: cross-environment tree shows a secret and its values", async ({ page }) => {
+  const folder = `struct-${Date.now()}`;
+  const path = `${folder}/cfg`;
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  // seed a secret so the unified tree has something to show
+  await page.goto("/ui2/secrets/secret");
+  await page.getByRole("button", { name: "New secret" }).click();
+  await page.fill("#secret-name", path);
+  await page.getByPlaceholder("key").first().fill("api_key");
+  await page.getByPlaceholder("value").first().fill("s3cr3t-value");
+  await page.getByRole("button", { name: "Create secret" }).click();
+  await expect(page.getByText("version 1")).toBeVisible();
+
+  // the Structure page is reachable from Secrets and renders the env picker
+  await page.goto("/ui2/secrets");
+  await page.getByRole("link", { name: "Structure" }).click();
+  await expect(page.getByRole("heading", { name: "Structure" })).toBeVisible();
+  await expect(page.getByText("Environments")).toBeVisible();
+
+  // drill into the union tree: folder -> secret -> per-environment column
+  await page.getByRole("button", { name: new RegExp(folder) }).click();
+  await page.getByRole("button", { name: "cfg" }).click();
+  // the secret's field is shown in the (single dev) environment column
+  await expect(page.getByText("api_key")).toBeVisible();
+
+  // revealing values surfaces the seeded value
+  await page.getByRole("button", { name: /Show values/ }).click();
+  await expect(page.getByText("s3cr3t-value")).toBeVisible();
+});
+
 test("access section: policies, capabilities, tokens", async ({ page }) => {
   await page.goto("/");
   await page.fill("#token", TOKEN);
