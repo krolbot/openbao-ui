@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { API_BASE } from "@/lib/base-path";
 import { isCrossSiteRequest } from "@/lib/csrf";
 import { openbao, OpenBaoRequestError } from "@/lib/openbao";
+import { requestOrigin } from "@/lib/request-origin";
 
 /**
  * POST /ui2/api/auth/oidc/start  { mount?, role? }
@@ -25,7 +26,10 @@ export async function POST(req: NextRequest) {
   }
   const mount = body.mount || "oidc";
   const nonce = crypto.randomUUID();
-  const redirectUri = `${new URL(req.url).origin}${API_BASE}/auth/oidc/callback`;
+  // Must match the role's allowed_redirect_uris, which the setup wizard registers
+  // from the browser's window.location.origin — so derive the same browser-facing
+  // origin here, NOT the standalone server's internal 0.0.0.0 bind address.
+  const redirectUri = `${requestOrigin(req)}${API_BASE}/auth/oidc/callback`;
 
   try {
     const res = await openbao.oidcAuthURL(mount, body.role, redirectUri, nonce);

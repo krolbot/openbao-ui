@@ -11,8 +11,8 @@ import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Disclosure } from "@/components/ui/disclosure";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { API_BASE } from "@/lib/base-path";
 import { BaoError } from "@/lib/bao-client";
+import { oidcCallbackUrl, useUiConfig } from "@/lib/ui-config";
 import {
   AuthMount,
   useApproleRoleId,
@@ -792,6 +792,7 @@ function RolesPanel({
   const roles = useAuthRoles(mount, spec.base);
   const create = useCreateAuthRole(mount, spec.base);
   const del = useDeleteAuthRole(mount, spec.base);
+  const uiConfig = useUiConfig();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [vals, setVals] = React.useState<Record<string, string>>({});
@@ -805,10 +806,9 @@ function RolesPanel({
           size="sm"
           variant="outline"
           onClick={() => {
-            const redirectUri =
-              typeof window !== "undefined"
-                ? `${window.location.origin}${API_BASE}/auth/oidc/callback`
-                : "";
+            // Prefer the OPENBAO_UI_PUBLIC_URL override so a manually-created
+            // OIDC role registers the same redirect URI the login route sends.
+            const redirectUri = oidcCallbackUrl(uiConfig.data?.publicUrl);
             const init: Record<string, string> = {};
             for (const f of spec.fields) {
               if (f.default != null) {

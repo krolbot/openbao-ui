@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { isCrossSiteRequest } from "@/lib/csrf";
 import { getConfig, setConfig } from "@/lib/db";
+import { configuredOrigin } from "@/lib/request-origin";
 import { getToken } from "@/lib/session";
 import { isOperator } from "@/lib/ui-admin";
 
@@ -40,6 +41,12 @@ export async function GET() {
   for (const k of PUBLIC_KEYS) {
     if (k in cfg) pub[k] = cfg[k];
   }
+  // Surface the OPENBAO_UI_PUBLIC_URL override (if set) so client-side setup —
+  // e.g. the Google wizard registering allowed_redirect_uris — derives the same
+  // redirect URI the server's login route will send, instead of the browser's
+  // origin. Env-derived and read-only; not persisted via PUT.
+  const publicUrl = configuredOrigin();
+  if (publicUrl) pub.publicUrl = publicUrl;
   return NextResponse.json({ config: pub });
 }
 

@@ -72,7 +72,8 @@ token's policies, and the enabled secret engines; **Secrets** lets you browse KV
 engines, create/edit secrets, view version history, and roll back — all fetched
 through the proxy, proving the frontend ↔ backend wiring end to end.
 
-Config via env (see `.env.example`): `OPENBAO_ADDR`, `BAO_COOKIE_NAME`.
+Config via env (see `.env.example`): `OPENBAO_ADDR`, `BAO_COOKIE_NAME`, and the
+optional `OPENBAO_UI_PUBLIC_URL` ([behind a reverse proxy](#behind-a-reverse-proxy)).
 
 ### Architecture detail: client data flow
 
@@ -98,6 +99,27 @@ Then visit <http://localhost:3000> and log in with token `root`.
   instance starts **sealed/uninitialized** — the UI detects this at `/ui2/login`
   and walks you through the built-in **initialize → save keys → unseal** flow.
   Mount a volume at `/bao/file` to persist storage.
+
+### Behind a reverse proxy
+
+The app derives its **public origin** (used for the OIDC `redirect_uri` and the
+post-login redirect) from each request's `Host` / `X-Forwarded-Host` +
+`X-Forwarded-Proto` headers. That works out of the box when your proxy forwards
+those headers.
+
+If your proxy/load balancer **rewrites or drops** them — symptom: "Sign in with
+Google" fails with *"OpenBao returned no authorization URL…"* pointing at an
+unexpected host like `0.0.0.0:3000` — set the public URL explicitly:
+
+```bash
+docker run … -e OPENBAO_UI_PUBLIC_URL=https://bao.example.com openbao-ui
+```
+
+This pins the origin to that exact value regardless of request headers. It is
+also echoed to the OIDC setup wizard, so the role's `allowed_redirect_uris` is
+registered with the **same** URL the login flow sends — keep this value in sync
+with the redirect URI registered in your Google/OIDC provider. Only the origin
+(`scheme://host[:port]`) is used; any path is ignored.
 
 ### Versioning & releases (tag parity with OpenBao)
 
