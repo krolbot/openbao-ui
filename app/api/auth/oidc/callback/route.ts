@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { BASE_PATH } from "@/lib/base-path";
 import { openbao } from "@/lib/openbao";
+import { requestOrigin } from "@/lib/request-origin";
 import { setToken } from "@/lib/session";
 
 /**
@@ -19,7 +20,10 @@ export async function GET(req: NextRequest) {
   const nonce = store.get("oidc_nonce")?.value ?? "";
   const mount = store.get("oidc_mount")?.value ?? "oidc";
 
-  const loginUrl = new URL(`${BASE_PATH}/login`, url.origin);
+  // Redirect back to the browser-facing origin, not the standalone server's
+  // internal 0.0.0.0 bind address (see lib/request-origin).
+  const origin = requestOrigin(req);
+  const loginUrl = new URL(`${BASE_PATH}/login`, origin);
 
   if (!code || !state || !nonce) {
     loginUrl.searchParams.set("error", "Invalid OIDC callback");
@@ -31,7 +35,7 @@ export async function GET(req: NextRequest) {
     await setToken(res.auth.client_token, res.auth.lease_duration);
     store.delete("oidc_nonce");
     store.delete("oidc_mount");
-    return NextResponse.redirect(new URL(BASE_PATH, url.origin));
+    return NextResponse.redirect(new URL(BASE_PATH, origin));
   } catch {
     loginUrl.searchParams.set("error", "OIDC login failed");
     return NextResponse.redirect(loginUrl);
