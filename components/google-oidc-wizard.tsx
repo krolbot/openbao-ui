@@ -9,10 +9,9 @@ import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import { Disclosure } from "@/components/ui/disclosure";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { API_BASE } from "@/lib/base-path";
 import { baoFetch, BaoError } from "@/lib/bao-client";
 import { useNamespace } from "@/lib/namespace";
-import { useSetUiConfig } from "@/lib/ui-config";
+import { oidcCallbackUrl, useSetUiConfig, useUiConfig } from "@/lib/ui-config";
 
 // One-click-ish setup for "Sign in with Google" on top of OpenBao's native
 // OIDC method. Composes the primitives: enable the mount, write provider config
@@ -33,6 +32,7 @@ export function GoogleOidcWizard({
 }) {
   const { namespace } = useNamespace();
   const setUiConfig = useSetUiConfig();
+  const uiConfig = useUiConfig();
   const qc = useQueryClient();
 
   const [clientId, setClientId] = React.useState("");
@@ -48,10 +48,9 @@ export function GoogleOidcWizard({
   const [error, setError] = React.useState<string | null>(null);
   const [done, setDone] = React.useState(false);
 
-  const redirectUri =
-    typeof window !== "undefined"
-      ? `${window.location.origin}${API_BASE}/auth/oidc/callback`
-      : `${API_BASE}/auth/oidc/callback`;
+  // Prefer the OPENBAO_UI_PUBLIC_URL override (if configured) so the role's
+  // allowed_redirect_uris matches the redirect_uri the login route will send.
+  const redirectUri = oidcCallbackUrl(uiConfig.data?.publicUrl);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
