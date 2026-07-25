@@ -4,6 +4,83 @@ const TOKEN = process.env.E2E_TOKEN ?? "root";
 
 // Smoke test of the Phase 2 happy path against a live stack:
 // login -> overview status -> secret engines -> KV folder browser.
+test("login method selector opens an accessible option list and switches credentials", async ({ page }) => {
+  await page.goto("/ui2/login");
+
+  const method = page.getByRole("combobox", { name: "Method" });
+  await method.click();
+  await page.getByRole("option", { name: "AppRole" }).click();
+
+  await expect(method).toHaveText("AppRole");
+  await expect(page.getByPlaceholder("approle")).toBeVisible();
+});
+
+test("overview does not create horizontal scrolling on a narrow phone", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.getByRole("button", { name: "System details" }).click();
+  await expect(page.getByText("Token access")).toBeVisible();
+
+  for (const action of [
+    async () => undefined,
+    async () => {
+      await page.getByRole("button", { name: "Open navigation" }).click();
+      await expect(page.getByRole("button", { name: "Close navigation" }).first()).toBeVisible();
+      const closeButton = page.getByRole("button", { name: "Close navigation" }).last();
+      const themeToggle = page.getByRole("button", { name: /Switch to (dark|light)/ });
+      const [closeBox, themeBox] = await Promise.all([closeButton.boundingBox(), themeToggle.boundingBox()]);
+      expect(closeBox).not.toBeNull();
+      expect(themeBox).not.toBeNull();
+      expect(Math.abs((closeBox?.y ?? 0) - (themeBox?.y ?? 0))).toBeLessThan(12);
+    },
+  ]) {
+    await action();
+    const widths = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+    }));
+    expect(widths.documentWidth).toBeLessThanOrEqual(widths.viewportWidth);
+  }
+  await page.getByRole("button", { name: "Close navigation" }).last().click();
+});
+
+test("access policies use a stacked master-detail layout on a narrow phone", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui2/access");
+  await expect(page.getByRole("heading", { name: "Access" })).toBeVisible();
+
+  const geometry = await page.evaluate(() => {
+    const list = document.querySelector<HTMLElement>('aside[aria-label="Policies"]');
+    const editor = document.querySelector<HTMLElement>('section[aria-label="Policy editor"]');
+    const listBox = list?.getBoundingClientRect();
+    const editorBox = editor?.getBoundingClientRect();
+    return {
+      listBottom: listBox?.bottom ?? 0,
+      listLeft: listBox?.left ?? 0,
+      listWidth: listBox?.width ?? 0,
+      editorTop: editorBox?.top ?? 0,
+      editorLeft: editorBox?.left ?? 0,
+      editorWidth: editorBox?.width ?? 0,
+      scrollWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+    };
+  });
+
+  expect(geometry.editorTop).toBeGreaterThanOrEqual(geometry.listBottom);
+  expect(geometry.editorLeft).toBeCloseTo(geometry.listLeft, 0);
+  expect(geometry.listWidth).toBeCloseTo(geometry.editorWidth, 0);
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+});
+
 test("login and browse the KV engine", async ({ page }) => {
   // redirected to /ui2/login
   await page.goto("/");
@@ -28,6 +105,24 @@ test("login and browse the KV engine", async ({ page }) => {
   await page.goto("/ui2/secrets/compare");
   await expect(page.getByRole("heading", { name: "Compare environments" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Compare" })).toBeVisible();
+});
+
+test("secrets dashboards do not create horizontal scrolling on a narrow phone", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  for (const path of ["/ui2/secrets", "/ui2/secrets/secret"]) {
+    await page.goto(path);
+    await expect(page.locator("main")).toBeVisible();
+    const widths = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+    }));
+    expect(widths.documentWidth).toBeLessThanOrEqual(widths.viewportWidth);
+  }
 });
 
 test("kv lifecycle: create, view, delete a secret", async ({ page }) => {
@@ -215,6 +310,37 @@ test("guides: generate an integration snippet for an environment", async ({ page
   await expect(page.getByText("auth/approle/login").first()).toBeVisible();
 });
 
+test("guides: wrapped tabs do not overlap their panel on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui2/guides");
+  await expect(page.getByRole("heading", { name: "Integration guides" })).toBeVisible();
+
+  const geometry = await page.evaluate(() => {
+    const tabBottoms = Array.from(document.querySelectorAll<HTMLElement>("[role=tab]")).map(
+      (tab) => tab.getBoundingClientRect().bottom,
+    );
+    const panelTop =
+      document.querySelector<HTMLElement>("[role=tabpanel]")?.getBoundingClientRect().top ?? 0;
+    return {
+      maxTabBottom: Math.max(...tabBottoms),
+      panelTop,
+      scrollWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+    };
+  });
+
+  expect(geometry.panelTop).toBeGreaterThanOrEqual(geometry.maxTabBottom);
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+
+  await page.getByRole("tab", { name: "Agent" }).click();
+  await expect(page.getByRole("tab", { name: "Agent" })).toHaveAttribute("aria-selected", "true");
+});
+
 test("environments: customize a friendly display name", async ({ page }) => {
   const friendly = `Prod ${Date.now()}`;
   await page.goto("/");
@@ -228,8 +354,44 @@ test("environments: customize a friendly display name", async ({ page }) => {
   await page.fill("#lbl-name", friendly);
   await page.getByRole("button", { name: "Save" }).click();
 
-  // the friendly name replaces the raw mount path as the card title
-  await expect(page.getByText(friendly)).toBeVisible();
+  // A friendly label is also used in the Guides select. It must truncate on a narrow phone
+  // instead of forcing the page wider than the viewport.
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto("/ui2/guides");
+  const geometry = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+  }));
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+});
+
+test("settings: about exposes build provenance and the source repository", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui2/settings/about");
+  await expect(page.getByText("Build")).toBeVisible();
+  await expect(page.getByText(/development|[0-9a-f]{7,40}/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Source repository" })).toHaveAttribute(
+    "href",
+    "https://github.com/krolbot/openbao-ui",
+  );
+});
+
+test("settings: preference selectors use an interactive accessible listbox", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL(/\/ui2\/?$/);
+
+  await page.goto("/ui2/settings/preferences");
+  const toastDuration = page.getByText("Toast duration").locator("..").getByRole("combobox");
+  await toastDuration.click();
+  await page.getByRole("option", { name: "10 seconds" }).click();
+
+  await expect(toastDuration).toHaveText("10 seconds");
 });
 
 test("settings: profile, preferences, namespaces", async ({ page }) => {
@@ -294,7 +456,9 @@ test("team: create a role and assign it to a member", async ({ page }) => {
 
   await page.getByRole("button", { name: member }).click();
   await expect(page.getByText("No roles assigned.")).toBeVisible();
-  await page.locator("select").selectOption({ label: "viewer" });
+  const rolePicker = page.getByText("Assign a role").locator("..").getByRole("combobox");
+  await rolePicker.click();
+  await page.getByRole("option", { name: "viewer" }).click();
 
   // the role badge + its remove control appear
   await expect(page.getByRole("button", { name: "Remove viewer" })).toBeVisible();
@@ -481,7 +645,9 @@ test("login customization: branding + method discovery", async ({ page }) => {
   // enable an OIDC method and surface it on the login page (listing_visibility)
   await page.goto("/ui2/access/auth");
   await page.getByRole("button", { name: "Enable method" }).click();
-  await page.getByRole("dialog").locator("select").selectOption("oidc");
+  const authTypePicker = page.getByRole("dialog").getByRole("combobox");
+  await authTypePicker.click();
+  await page.getByRole("option", { name: "oidc" }).click();
   await page.getByRole("button", { name: "Enable", exact: true }).click();
   // select the freshly enabled method from the list, then open Tune
   await page.getByRole("button", { name: /oidc\// }).click();

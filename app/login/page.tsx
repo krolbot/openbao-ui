@@ -16,6 +16,13 @@ import {
 import { Disclosure } from "@/components/ui/disclosure";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { API_BASE } from "@/lib/base-path";
 
 const LOGIN_ENDPOINT = `${API_BASE}/auth/login`;
@@ -194,21 +201,25 @@ function LoginForm() {
     <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <Label htmlFor="method">Method</Label>
-        <select
-          id="method"
+        <Select
+          items={METHODS}
           value={method}
-          onChange={(e) => {
-            setMethod(e.target.value);
+          onValueChange={(value) => {
+            setMethod(value ?? "token");
             setError(null);
           }}
-          className="h-9 rounded-md border bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {METHODS.map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger id="method">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectPopup>
+            {METHODS.map((m) => (
+              <SelectItem key={m.value} value={m.value}>
+                {m.label}
+              </SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
       </div>
 
       {method === "token" ? (

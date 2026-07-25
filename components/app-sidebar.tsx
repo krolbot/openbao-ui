@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, BookOpen, ExternalLink, KeyRound, LayoutDashboard, Settings, Users } from "lucide-react";
+import { Activity, BookOpen, ExternalLink, KeyRound, LayoutDashboard, Settings, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -24,10 +24,12 @@ export function AppSidebar({
   displayName,
   variant = SidebarVariant.Desktop,
   onNavigate,
+  onClose,
 }: {
   displayName: string;
   variant?: SidebarVariant;
   onNavigate?: () => void;
+  onClose?: () => void;
 }) {
   const pathname = usePathname();
   const rel = pathname.replace(new RegExp(`^${BASE_PATH}`), "") || "/";
@@ -50,7 +52,19 @@ export function AppSidebar({
     <aside className={cn("flex w-60 shrink-0 flex-col border-r bg-sidebar", variant === SidebarVariant.Mobile ? "h-full w-full border-0" : "hidden md:flex")}>
       <div className="flex h-14 items-center justify-between gap-2 border-b px-4">
         <Logo variant="horizontal" className="h-6 w-auto" />
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          {variant === SidebarVariant.Mobile && onClose ? (
+            <button
+              type="button"
+              aria-label="Close navigation"
+              onClick={onClose}
+              className="rounded-md p-2 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            >
+              <X className="size-5" />
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="space-y-2 border-b p-3">

@@ -28,6 +28,7 @@ jobs:
       - run: pnpm build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_PUBLIC_BUILD_REVISION: ${{ github.sha }}
 
   e2e:
     name: E2E (Playwright vs real OpenBao)
@@ -49,6 +50,7 @@ jobs:
         run: pnpm build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_PUBLIC_BUILD_REVISION: ${{ github.sha }}
 
       # Assemble the standalone output + run it (with OpenBao) as the single
       # runtime image — same artifact behavior as the shipped image, but built

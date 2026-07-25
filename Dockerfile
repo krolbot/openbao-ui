@@ -27,9 +27,11 @@ RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm ins
 FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS builder
 RUN corepack enable
 WORKDIR /app
+ARG BUILD_REVISION=development
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_BUILD_REVISION=${BUILD_REVISION}
 RUN pnpm build
 
 # --- Stage 3: runtime (Node + the OpenBao binary) ---------------------------

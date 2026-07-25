@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useState } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar";
@@ -40,12 +40,12 @@ export function AppShell({
             className="absolute inset-0 bg-foreground/40"
           />
           <aside className="relative flex h-full w-72 max-w-[85vw] flex-col bg-sidebar shadow-xl">
-            <div className="flex justify-end p-2">
-              <button type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} className="rounded-md p-2 hover:bg-sidebar-accent">
-                <X className="size-5" />
-              </button>
-            </div>
-            <AppSidebar displayName={displayName} variant="mobile" onNavigate={() => setMobileNavOpen(false)} />
+            <AppSidebar
+              displayName={displayName}
+              variant="mobile"
+              onClose={() => setMobileNavOpen(false)}
+              onNavigate={() => setMobileNavOpen(false)}
+            />
           </aside>
         </div>
       ) : null}
