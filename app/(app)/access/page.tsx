@@ -74,7 +74,7 @@ export default function PoliciesPage() {
 
   return (
     <div className="flex min-h-full flex-col md:h-full md:flex-row">
-      <aside className="w-full shrink-0 border-b p-3 md:w-64 md:overflow-auto md:border-b-0 md:border-r" aria-label="Policies">
+      <aside className="w-full shrink-0 border-b p-3 md:w-64 md:overflow-auto md:border-b-0 md:border-r md:pl-6" aria-label="Policies">
         <Button size="sm" className="mb-2 w-full" onClick={openNew}>
           <Plus /> New policy
         </Button>

@@ -81,6 +81,26 @@ test("access policies use a stacked master-detail layout on a narrow phone", asy
   expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.viewportWidth);
 });
 
+test("access policy list keeps a desktop left inset", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+  await page.fill("#token", TOKEN);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/ui2/access");
+  await expect(page.getByRole("heading", { name: "Access" })).toBeVisible();
+
+  const inset = await page.evaluate(() => {
+    const list = document.querySelector<HTMLElement>('aside[aria-label="Policies"]');
+    const button = list?.querySelector("button");
+    if (!list || !button) return 0;
+    return button.getBoundingClientRect().left - list.getBoundingClientRect().left;
+  });
+
+  expect(inset).toBeGreaterThanOrEqual(20);
+});
+
 test("login and browse the KV engine", async ({ page }) => {
   // redirected to /ui2/login
   await page.goto("/");
