@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-import { isAppCredential } from "@/lib/app-credentials";
+import { isAppCredential } from "@/lib/app-credential-schema";
 import { isCrossSiteRequest } from "@/lib/csrf";
 import { getConfig, setConfig } from "@/lib/db";
 import {

@@ -44,8 +44,10 @@ export function proxy(req: NextRequest) {
   // attributes on its dynamic inline bootstrapping scripts.
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("content-security-policy", csp);
-  const next = () => {
-    const response = NextResponse.next({ request: { headers: requestHeaders } });
+  const next = (forwardRequestHeaders = true) => {
+    const response = forwardRequestHeaders
+      ? NextResponse.next({ request: { headers: requestHeaders } })
+      : NextResponse.next();
     response.headers.set("Content-Security-Policy", csp);
     return response;
   };
@@ -71,7 +73,10 @@ export function proxy(req: NextRequest) {
     rel.startsWith("/api/") ||
     isAsset;
 
-  if (isPublic) return next();
+  // Do not construct a forwarded request for BFF calls: in Next's proxy layer
+  // that can turn a streamed mutation body into an empty request. API handlers
+  // must receive the original body unchanged.
+  if (isPublic) return next(!rel.startsWith("/api/"));
 
   const token = req.cookies.get(COOKIE_NAME)?.value;
   if (!token) return redirectToLogin();

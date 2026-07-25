@@ -20,8 +20,24 @@ type LoginBody =
   | { method: "ldap"; mount?: string; username: string; password: string }
   | { method: "approle"; mount?: string; roleId: string; secretId: string };
 type LoginSuccess = { displayName?: string; policies: string[] };
-const loginRateLimiter = new FixedWindowRateLimiter(10, 60_000);
+const DefaultLoginRateLimit = 10;
+const LoginRateLimitWindowMs = 60_000;
 const MaxLoginBodyBytes = 16 * 1024;
+
+function readLoginRateLimit(): number {
+  const raw = process.env.BAO_LOGIN_RATE_LIMIT;
+  if (raw === undefined) return DefaultLoginRateLimit;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < 1 || value > 10_000) {
+    throw new Error("BAO_LOGIN_RATE_LIMIT must be an integer from 1 through 10000.");
+  }
+  return value;
+}
+
+const loginRateLimiter = new FixedWindowRateLimiter(
+  readLoginRateLimit(),
+  LoginRateLimitWindowMs,
+);
 
 function isLoginBody(value: unknown): value is LoginBody {
   if (typeof value !== "object" || value === null) return false;

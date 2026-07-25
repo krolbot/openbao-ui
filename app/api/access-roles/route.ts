@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-import { isAccessRole } from "@/lib/access-roles";
+import { isAccessRole } from "@/lib/access-role-schema";
 import { isCrossSiteRequest } from "@/lib/csrf";
 import { getConfig, setConfig } from "@/lib/db";
 import {
@@ -66,23 +66,24 @@ export async function PUT(req: NextRequest) {
   const operatorRejection = await authorizeMetadataOperator(session);
   if (operatorRejection) return operatorRejection;
 
-  let payload: AccessRolesPayload;
+  let parsed: unknown;
   try {
-    const parsed = await parseJsonBody<unknown>(req, MaxAccessRolesBodyBytes);
-    if (
-      typeof parsed !== "object" ||
-      parsed === null ||
-      !Array.isArray((parsed as AccessRolesPayload).roles) ||
-      !(parsed as AccessRolesPayload).roles?.every(isAccessRole)
-    ) {
-      return asJsonResponse(
-        invalidRequest("roles must be an array of valid access roles."),
-      );
-    }
-    payload = parsed as AccessRolesPayload;
+    parsed = await parseJsonBody<unknown>(req, MaxAccessRolesBodyBytes);
   } catch (error) {
     return asJsonResponse(requestBodyFailure(error));
   }
+
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !Array.isArray((parsed as AccessRolesPayload).roles) ||
+    !(parsed as AccessRolesPayload).roles?.every(isAccessRole)
+  ) {
+    return asJsonResponse(
+      invalidRequest("roles must be an array of valid access roles."),
+    );
+  }
+  const payload = parsed as AccessRolesPayload;
 
   if (!Array.isArray(payload.roles)) {
     return asJsonResponse(invalidRequest("roles must be an array."));

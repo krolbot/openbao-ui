@@ -456,15 +456,17 @@ test("auth: Google sign-in wizard renders", async ({ page }) => {
   await page.getByRole("button", { name: "Cancel" }).click();
 });
 
-test("coexistence: OpenBao's stock UI is still served at /ui", async ({ page }) => {
-  // Our app lives at /ui2; OpenBao's own UI stays at /ui (proxied through the
-  // BFF). Hitting /ui must reach the stock UI's HTML, not our app's login.
-  const res = await page.goto("/ui/");
-  expect(res?.status()).toBeLessThan(400);
-  // The stock Ember UI boots from a <div id="ember-app"> / data-app-boot config.
-  const html = await page.content();
-  expect(html).toMatch(/ember|data-app-boot|OpenBao/i);
-  // and it must NOT be our React app's sidebar/login
+test("public OpenBao transport and stock UI are not exposed", async ({ page }) => {
+  // A real external request must never reach OpenBao's raw transport or stock
+  // UI. Either route would expose bootstrap/control-plane behavior before the
+  // operator has initialized the server.
+  const [rawApi, stockUi] = await Promise.all([
+    page.request.get("/v1/sys/seal-status"),
+    page.request.get("/ui/"),
+  ]);
+
+  expect(rawApi.status()).toBe(404);
+  expect(stockUi.status()).toBe(404);
   await expect(page.getByText("Sign in to OpenBao")).toHaveCount(0);
 });
 
@@ -497,7 +499,12 @@ test("login customization: branding + method discovery", async ({ page }) => {
   // the login page reflects branding + discovered method, token tucked away
   await page.goto("/ui2/login");
   await expect(page.getByText("Acme Vault")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Continue with oidc/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Other ways to sign in" })).toBeVisible();
+  // An enabled but unconfigured OIDC mount must not advertise a dead external
+  // login path. Token fallback remains explicitly available.
+  await expect(
+    page.getByRole("button", { name: "Continue with OIDC" }),
+  ).toHaveCount(0);
+  await expect(page.locator("#token")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
 });
 

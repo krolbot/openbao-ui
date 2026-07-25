@@ -15,17 +15,9 @@ import { useNamespace } from "@/lib/namespace";
 
 // How a scoped role selects its environments — explicit multi-select of mounts,
 // or env folders within a single mount.
-export type EnvSelector =
-  | { kind: "mounts"; mounts: string[] } // explicit KV mounts (no trailing slash)
-  | { kind: "folders"; mount: string; folders: string[] }; // single-mount: env folders
+import { type AccessRole, type EnvSelector } from "@/lib/access-role-schema";
 
-export type AccessRole = {
-  name: string; // also the policy + identity group name
-  description?: string;
-  level: AccessLevel;
-  env: EnvSelector;
-  paths: string[]; // env-relative secret paths this role may access
-};
+export { type AccessRole, type EnvSelector } from "@/lib/access-role-schema";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
