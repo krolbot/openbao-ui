@@ -17,6 +17,7 @@ import { openbao, OpenBaoRequestError } from "@/lib/openbao";
 import { FixedWindowRateLimiter } from "@/lib/rate-limit";
 import { parseJsonBody, RequestBodyError } from "@/lib/request-body";
 import { requestOrigin } from "@/lib/request-origin";
+import { getOidcTransactionCookieNames } from "@/lib/session";
 
 const oidcStartRateLimiter = new FixedWindowRateLimiter(20, 60_000);
 const SafeAuthMount = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
@@ -94,8 +95,9 @@ export async function POST(req: NextRequest) {
       path: "/",
       maxAge: 300,
     };
-    store.set("oidc_nonce", nonce, cookieOptions);
-    store.set("oidc_mount", mount, cookieOptions);
+    const transactionCookies = getOidcTransactionCookieNames();
+    store.set(transactionCookies.nonce, nonce, cookieOptions);
+    store.set(transactionCookies.mount, mount, cookieOptions);
     return asJsonResponse(success({ authUrl: result.data.auth_url }));
   } catch (error) {
     if (error instanceof OpenBaoRequestError) {

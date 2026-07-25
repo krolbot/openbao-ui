@@ -22,7 +22,9 @@ export type MetadataAuthorization =
  * Validates a metadata request in the same namespace before reading or writing
  * local UI state. The client-controlled namespace is part of token validation.
  */
-export async function authorizeMetadataRequest(headers: Headers): Promise<MetadataAuthorization> {
+export async function authorizeMetadataRequest(
+  headers: Headers,
+): Promise<MetadataAuthorization> {
   const namespace = headers.get("x-vault-namespace") ?? "";
   try {
     const token = await getValidatedToken(namespace);
@@ -42,10 +44,10 @@ export async function authorizeMetadataRequest(headers: Headers): Promise<Metada
 }
 
 /**
- * Enforces OpenBao's operator authorization for metadata writes without
- * turning an unavailable dependency into a false permission denial.
+ * Enforces OpenBao's operator authorization for sensitive metadata access
+ * without turning an unavailable dependency into a false permission denial.
  */
-export async function authorizeMetadataMutation(
+export async function authorizeMetadataOperator(
   session: ValidatedMetadataSession,
 ): Promise<Response | undefined> {
   try {

@@ -48,10 +48,13 @@ function isLoginBody(value: unknown): value is LoginBody {
       return false;
   }
 }
-function loginRateLimitKey(req: Request): string {
-  return (
-    req.headers.get("x-forwarded-for")?.split(",", 1)[0]?.trim() || "unknown"
-  );
+function loginRateLimitKey(body: LoginBody): string {
+  if (body.method === "userpass" || body.method === "ldap") {
+    return `${body.method}:${body.mount ?? body.method}:${body.username}`;
+  }
+  if (body.method === "approle")
+    return `approle:${body.mount ?? "approle"}:${body.roleId}`;
+  return "token";
 }
 function bodyFailure(error: unknown) {
   return error instanceof RequestBodyError && error.status === 413
@@ -84,7 +87,7 @@ export async function POST(req: Request) {
   } catch (error) {
     return asJsonResponse(bodyFailure(error));
   }
-  if (!loginRateLimiter.consume(loginRateLimitKey(req)))
+  if (!loginRateLimiter.consume(loginRateLimitKey(body)))
     return asJsonResponse(rateLimited());
 
   try {

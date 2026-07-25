@@ -15,7 +15,19 @@ const isProd = process.env.NODE_ENV === "production";
  * because browsers reject Secure cookies on localhost HTTP.
  */
 export function getCookieName(nodeEnv = process.env.NODE_ENV): string {
-  return process.env.BAO_COOKIE_NAME ?? (nodeEnv === "production" ? "__Host-bao_token" : "bao_token");
+  return (
+    process.env.BAO_COOKIE_NAME ??
+    (nodeEnv === "production" ? "__Host-bao_token" : "bao_token")
+  );
+}
+
+export function getOidcTransactionCookieNames(nodeEnv = process.env.NODE_ENV): {
+  nonce: string;
+  mount: string;
+} {
+  return nodeEnv === "production"
+    ? { nonce: "__Host-bao_oidc_nonce", mount: "__Host-bao_oidc_mount" }
+    : { nonce: "bao_oidc_nonce", mount: "bao_oidc_mount" };
 }
 
 export const COOKIE_NAME = getCookieName();
@@ -29,7 +41,9 @@ export async function getToken(): Promise<string | undefined> {
  * Validates the bearer with OpenBao before local UI metadata relies on it.
  * Cookie presence alone is not authentication: callers can forge Cookie headers.
  */
-export async function getValidatedToken(namespace?: string): Promise<string | undefined> {
+export async function getValidatedToken(
+  namespace?: string,
+): Promise<string | undefined> {
   const token = await getToken();
   if (!token) return undefined;
 

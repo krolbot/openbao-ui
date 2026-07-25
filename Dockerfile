@@ -4,19 +4,13 @@
 # Single image that runs BOTH the OpenBao server and our Next.js BFF/UI.
 #   - OpenBao listens internally on 127.0.0.1:8200
 #   - Next.js (standalone) listens on 0.0.0.0:3000 and is the only exposed port
-#   - Next proxies /v1/* to OpenBao (see next.config.ts rewrites)
+#   - OpenBao remains reachable only through bounded authenticated BFF routes
 ###############################################################################
 
-# OpenBao binary source. The image is tagged to match this exact OpenBao
-# version (tag parity) and the `bao` binary copied below comes from it. Keep
-# OPENBAO_VERSION in sync with the repo's `.openbao-version` pin — CI passes it
-# explicitly (`--build-arg OPENBAO_VERSION=$(cat .openbao-version)`); this
-# default is just the fallback for ad-hoc local builds.
-#   docker build --build-arg OPENBAO_VERSION=2.5.5 .
-# Or override the whole ref to pin a digest:
-#   docker build --build-arg OPENBAO_IMAGE=quay.io/openbao/openbao@sha256:… .
-ARG OPENBAO_VERSION=2.5.5
-ARG OPENBAO_IMAGE=quay.io/openbao/openbao:${OPENBAO_VERSION}
+# The image is pinned by immutable digest. Keep this fallback in sync with
+# `.openbao-image`; CI passes that committed ref explicitly.
+#   docker build --build-arg OPENBAO_IMAGE="$(cat .openbao-image)" .
+ARG OPENBAO_IMAGE=quay.io/openbao/openbao@sha256:6150c4a6b62067db6141c8da7a6a6b5763f4f47c315343d0c848b40fecdfd452
 FROM ${OPENBAO_IMAGE} AS openbao
 
 # --- Stage 1: install dependencies ------------------------------------------

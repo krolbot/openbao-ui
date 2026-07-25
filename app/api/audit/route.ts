@@ -8,13 +8,13 @@ import {
   success,
   unauthorized,
 } from "@/lib/http/response";
-import { openbao, OpenBaoRequestError } from "@/lib/openbao";
+import { OpenBaoRequestError } from "@/lib/openbao";
 import { getValidatedToken } from "@/lib/session";
+import { isOperator } from "@/lib/ui-admin";
 import { parseAuditLog } from "@/lib/audit-parse";
 
 const AuditLogPath = process.env.AUDIT_LOG_PATH ?? "/bao/file/audit.log";
 const MaxAuditReadBytes = 512 * 1024;
-const AuditCapabilities = new Set(["read", "list", "sudo", "root"]);
 
 async function readRecentAuditLog(): Promise<string> {
   const { size } = await stat(AuditLogPath);
@@ -51,13 +51,7 @@ export async function GET() {
   if (!token) return asJsonResponse(unauthorized());
 
   try {
-    const capabilities = await openbao.capabilitiesSelf(token, ["sys/audit"]);
-    const allowed =
-      (capabilities.data?.["sys/audit"] as string[] | undefined) ??
-      capabilities.data?.capabilities ??
-      [];
-    if (!allowed.some((capability) => AuditCapabilities.has(capability)))
-      return asJsonResponse(forbidden());
+    if (!(await isOperator(token))) return asJsonResponse(forbidden());
   } catch (error) {
     if (error instanceof OpenBaoRequestError)
       return asJsonResponse(serviceUnavailable(Dependency.OpenBao));

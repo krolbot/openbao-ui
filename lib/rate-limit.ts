@@ -1,4 +1,8 @@
-/** In-process fixed-window limiter. Deploy an edge/shared limiter for multi-instance production. */
+/**
+ * Local defense-in-depth limiter. The authoritative production quota belongs at
+ * the reverse proxy/WAF, where client IP is trustworthy and limits are shared
+ * across every application replica.
+ */
 export class FixedWindowRateLimiter {
   private readonly buckets = new Map<string, { count: number; resetAt: number }>();
 

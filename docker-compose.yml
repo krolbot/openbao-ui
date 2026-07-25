@@ -7,6 +7,11 @@ services:
     image: openbao-ui:latest
     # PID 1 init so the two child processes (OpenBao + Next.js) are reaped cleanly.
     init: true
+    pids_limit: 256
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "127.0.0.1:3000:3000"
     environment:

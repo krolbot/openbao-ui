@@ -11,20 +11,12 @@ const COOKIE_NAME =
  * middleware). Unauthenticated requests to our app (/ui2/*) are redirected to
  * /ui2/login; the login page and the auth BFF routes stay open.
  *
- * NOTE: this only governs the app's basePath (/ui2). The `/ui/*` stock-UI proxy
- * and the `/v1/*` API proxy live outside basePath (next.config rewrites with
- * basePath:false) — we let `/ui/*` pass through untouched (OpenBao's own UI
- * handles its own auth), and the unauthenticated bootstrap/discovery calls the
- * login and seal flows make reach OpenBao directly, by design.
+ * NOTE: proxy only governs this application's pages. OpenBao is intentionally
+ * not reachable through `/ui/*` or `/v1/*` reverse-proxy paths; privileged
+ * bootstrap remains a local operator action.
  */
 export function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
-  // OpenBao's stock UI lives at /ui/* (proxied to OpenBao). Let it through — it
-  // is not our app and authenticates itself. Note `/ui2/...` does NOT match
-  // `startsWith("/ui/")`, so our app is still gated below.
-  if (pathname === "/ui" || pathname.startsWith("/ui/")) {
-    return NextResponse.next();
-  }
 
   // Normalize away our basePath so the allow-list works regardless of whether
   // Next includes it in the pathname for this runtime version.
@@ -33,16 +25,13 @@ export function proxy(req: NextRequest) {
   // API routes self-authenticate and return JSON status codes (never redirect
   // an XHR to the login HTML); only page navigations are gated here. Static
   // assets in public/ (e.g. the logo SVGs) must not be redirected either.
-  const isAsset = /\.(svg|png|jpe?g|gif|ico|webp|woff2?|css|js|map|txt)$/i.test(rel);
-  // /v1/* is the unauthenticated OpenBao proxy used by the seal/bootstrap and
-  // login-discovery flows. It already sits outside basePath (so this normally
-  // doesn't run on it), but exempt it explicitly as defense in depth.
+  const isAsset = /\.(svg|png|jpe?g|gif|ico|webp|woff2?|css|js|map|txt)$/i.test(
+    rel,
+  );
   const isPublic =
     rel === "/login" ||
     rel.startsWith("/login/") ||
     rel.startsWith("/api/") ||
-    rel === "/v1" ||
-    rel.startsWith("/v1/") ||
     isAsset;
 
   if (isPublic) return NextResponse.next();

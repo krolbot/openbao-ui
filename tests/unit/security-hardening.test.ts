@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { isCrossSiteRequest } from "@/lib/csrf";
-import { getCookieName } from "@/lib/session";
+import { getCookieName, getOidcTransactionCookieNames } from "@/lib/session";
 import { FixedWindowRateLimiter } from "@/lib/rate-limit";
 import { parseJsonBody } from "@/lib/request-body";
 
@@ -12,6 +12,13 @@ describe("session cookie hardening", () => {
 
   it("keeps the development cookie explicitly separate", () => {
     expect(getCookieName("development")).toBe("bao_token");
+  });
+
+  it("uses host-only OIDC transaction cookies in production", () => {
+    expect(getOidcTransactionCookieNames("production")).toEqual({
+      nonce: "__Host-bao_oidc_nonce",
+      mount: "__Host-bao_oidc_mount",
+    });
   });
 });
 
@@ -35,8 +42,13 @@ describe("bounded JSON parsing", () => {
   });
 
   it("rejects malformed JSON with a client error", async () => {
-    const req = new Request("http://localhost/api", { method: "POST", body: "{" });
-    await expect(parseJsonBody(req, 1024)).rejects.toMatchObject({ status: 400 });
+    const req = new Request("http://localhost/api", {
+      method: "POST",
+      body: "{",
+    });
+    await expect(parseJsonBody(req, 1024)).rejects.toMatchObject({
+      status: 400,
+    });
   });
 });
 

@@ -12,7 +12,7 @@ import {
   success,
 } from "@/lib/http/response";
 import {
-  authorizeMetadataMutation,
+  authorizeMetadataOperator,
   authorizeMetadataRequest,
 } from "@/lib/metadata-session";
 import { parseJsonBody, RequestBodyError } from "@/lib/request-body";
@@ -44,6 +44,10 @@ function requestBodyFailure(error: unknown) {
 export async function GET(req: NextRequest) {
   const authorization = await authorizeMetadataRequest(req.headers);
   if (authorization.response) return authorization.response;
+  const operatorRejection = await authorizeMetadataOperator(
+    authorization.session,
+  );
+  if (operatorRejection) return operatorRejection;
 
   const requestedScope = req.nextUrl.searchParams.get("scope");
   if (requestedScope !== null && !isLabelScope(requestedScope)) {
@@ -51,7 +55,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const labels = listLabels(authorization.session.namespace, requestedScope ?? undefined);
+    const labels = listLabels(
+      authorization.session.namespace,
+      requestedScope ?? undefined,
+    );
     return asJsonResponse(success({ labels }));
   } catch {
     return asJsonResponse(serviceUnavailable(Dependency.Storage));
@@ -67,7 +74,7 @@ export async function PUT(req: NextRequest) {
     return asJsonResponse(forbidden("Cross-site requests are not allowed."));
   }
 
-  const operatorRejection = await authorizeMetadataMutation(session);
+  const operatorRejection = await authorizeMetadataOperator(session);
   if (operatorRejection) return operatorRejection;
 
   let payload: LabelPayload;

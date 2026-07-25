@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { Logo } from "@/components/logo";
-import { SealGate } from "@/components/seal-gate";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -45,11 +44,9 @@ type UiConfig = {
 
 export default function LoginPage() {
   return (
-    <SealGate>
-      <Suspense fallback={null}>
-        <LoginForm />
-      </Suspense>
-    </SealGate>
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
 
