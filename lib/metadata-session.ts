@@ -1,11 +1,62 @@
+import {
+  asJsonResponse,
+  Dependency,
+  forbidden,
+  serviceUnavailable,
+  unauthorized,
+} from "@/lib/http/response";
+import { OpenBaoRequestError } from "@/lib/openbao";
 import { getValidatedToken } from "@/lib/session";
+import { isOperator } from "@/lib/ui-admin";
+
+export type ValidatedMetadataSession = {
+  namespace: string;
+  token: string;
+};
+
+export type MetadataAuthorization =
+  | { session: ValidatedMetadataSession; response: undefined }
+  | { session: undefined; response: Response };
 
 /**
- * Scope locally stored UI metadata to a token verified in the same namespace.
- * The namespace header is client-controlled, so it must be part of validation.
+ * Validates a metadata request in the same namespace before reading or writing
+ * local UI state. The client-controlled namespace is part of token validation.
  */
-export async function getValidatedMetadataSession(headers: Headers) {
+export async function authorizeMetadataRequest(headers: Headers): Promise<MetadataAuthorization> {
   const namespace = headers.get("x-vault-namespace") ?? "";
-  const token = await getValidatedToken(namespace);
-  return token ? { namespace, token } : undefined;
+  try {
+    const token = await getValidatedToken(namespace);
+    if (!token) {
+      return { session: undefined, response: asJsonResponse(unauthorized()) };
+    }
+    return { session: { namespace, token }, response: undefined };
+  } catch (error) {
+    if (error instanceof OpenBaoRequestError) {
+      return {
+        session: undefined,
+        response: asJsonResponse(serviceUnavailable(Dependency.OpenBao)),
+      };
+    }
+    throw error;
+  }
+}
+
+/**
+ * Enforces OpenBao's operator authorization for metadata writes without
+ * turning an unavailable dependency into a false permission denial.
+ */
+export async function authorizeMetadataMutation(
+  session: ValidatedMetadataSession,
+): Promise<Response | undefined> {
+  try {
+    if (await isOperator(session.token, session.namespace)) {
+      return undefined;
+    }
+    return asJsonResponse(forbidden("Operator permission is required."));
+  } catch (error) {
+    if (error instanceof OpenBaoRequestError) {
+      return asJsonResponse(serviceUnavailable(Dependency.OpenBao));
+    }
+    throw error;
+  }
 }

@@ -60,9 +60,9 @@ async function startOidc(mount: string): Promise<{ authUrl?: string; error?: str
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mount: mount || undefined }),
     });
-    const data = await res.json();
-    if (!res.ok) return { error: data.error ?? "OIDC start failed" };
-    return { authUrl: data.authUrl };
+    const result = await res.json() as { ok: boolean; data?: { authUrl?: string }; error?: { message?: string } };
+    if (!result.ok) return { error: result.error?.message ?? "OIDC start failed" };
+    return { authUrl: result.data?.authUrl };
   } catch {
     return { error: "Network error — is OpenBao reachable?" };
   }
@@ -108,8 +108,10 @@ function LoginForm() {
       })
       .catch(() => {});
     fetch(`${API_BASE}/ui-config`)
-      .then((r) => (r.ok ? r.json() : { config: {} }))
-      .then((d) => setCfg(d.config ?? {}))
+      .then((response) => response.json())
+      .then((result: { ok?: boolean; data?: { config?: UiConfig } }) =>
+        setCfg(result.ok ? result.data?.config ?? {} : {}),
+      )
       .catch(() => {});
   }, []);
 
@@ -151,9 +153,10 @@ function LoginForm() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mount: f.mount || undefined, role: f.role || undefined }),
         });
-        const data = await res.json();
-        if (!res.ok) return setError(data.error ?? "OIDC start failed");
-        window.location.href = data.authUrl;
+        const result = await res.json() as { ok: boolean; data?: { authUrl?: string }; error?: { message?: string } };
+        if (!result.ok) return setError(result.error?.message ?? "OIDC start failed");
+        if (!result.data?.authUrl) return setError("OIDC start returned no authorization URL.");
+        window.location.href = result.data.authUrl;
         return;
       }
 
@@ -171,9 +174,9 @@ function LoginForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Login failed");
+      const result = await res.json() as { ok: boolean; error?: { message?: string } };
+      if (!result.ok) {
+        setError(result.error?.message ?? "Login failed");
         return;
       }
       router.push("/");

@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import { openbao } from "@/lib/openbao";
+import { openbao, OpenBaoRequestError } from "@/lib/openbao";
 
 /**
  * The OpenBao token is stored in an httpOnly cookie so it is never exposed to
@@ -32,12 +32,16 @@ export async function getToken(): Promise<string | undefined> {
 export async function getValidatedToken(namespace?: string): Promise<string | undefined> {
   const token = await getToken();
   if (!token) return undefined;
+
   try {
     await openbao.lookupSelf(token, namespace);
     return token;
-  } catch {
-    await clearToken();
-    return undefined;
+  } catch (error) {
+    if (error instanceof OpenBaoRequestError && error.status === 403) {
+      await clearToken();
+      return undefined;
+    }
+    throw error;
   }
 }
 

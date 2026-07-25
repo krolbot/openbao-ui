@@ -13,13 +13,20 @@ import { useCan } from "@/lib/acl";
 import { BASE_PATH } from "@/lib/base-path";
 import { cn } from "@/lib/utils";
 
+const SidebarVariant = {
+  Desktop: "desktop",
+  Mobile: "mobile",
+} as const;
+
+type SidebarVariant = (typeof SidebarVariant)[keyof typeof SidebarVariant];
+
 export function AppSidebar({
   displayName,
-  mobile = false,
+  variant = SidebarVariant.Desktop,
   onNavigate,
 }: {
   displayName: string;
-  mobile?: boolean;
+  variant?: SidebarVariant;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
@@ -40,7 +47,7 @@ export function AppSidebar({
   ].filter((n) => n.show);
 
   return (
-    <aside className={cn("flex w-60 shrink-0 flex-col border-r bg-sidebar", mobile ? "h-full w-full border-0" : "hidden md:flex")}>
+    <aside className={cn("flex w-60 shrink-0 flex-col border-r bg-sidebar", variant === SidebarVariant.Mobile ? "h-full w-full border-0" : "hidden md:flex")}>
       <div className="flex h-14 items-center justify-between gap-2 border-b px-4">
         <Logo variant="horizontal" className="h-6 w-auto" />
         <ThemeToggle />

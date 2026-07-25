@@ -45,7 +45,7 @@ export function AppShell({
                 <X className="size-5" />
               </button>
             </div>
-            <AppSidebar displayName={displayName} mobile onNavigate={() => setMobileNavOpen(false)} />
+            <AppSidebar displayName={displayName} variant="mobile" onNavigate={() => setMobileNavOpen(false)} />
           </aside>
         </div>
       ) : null}
