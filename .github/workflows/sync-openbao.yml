@@ -33,7 +33,7 @@ jobs:
       need_publish: ${{ steps.check.outputs.need_publish }}
       need_bump: ${{ steps.check.outputs.need_bump }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Determine target version & whether we need to act
         id: check
@@ -109,7 +109,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Open pin-bump PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
