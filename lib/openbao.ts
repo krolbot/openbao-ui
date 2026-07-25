@@ -108,8 +108,8 @@ export type MountsResponse = {
 
 export const openbao = {
   /** Validate a raw token and return its metadata. */
-  lookupSelf: (token: string) =>
-    request<TokenLookup>("auth/token/lookup-self", { token }),
+  lookupSelf: (token: string, namespace?: string) =>
+    request<TokenLookup>("auth/token/lookup-self", { token, namespace }),
 
   /** Username/password login -> returns a client token in `auth`. */
   userpassLogin: (mount: string, username: string, password: string) =>
@@ -158,6 +158,10 @@ export const openbao = {
   /** Renew the current token; returns the new lease duration. */
   renewSelf: (token: string) =>
     request<AuthResponse>("auth/token/renew-self", { method: "POST", token }),
+
+  /** Revoke the current bearer during logout; failures must not prevent cookie clearing. */
+  revokeSelf: (token: string) =>
+    request<void>("auth/token/revoke-self", { method: "POST", token }),
 
   /** Unauthenticated: current seal status of the instance. */
   sealStatus: () => request<SealStatus>("sys/seal-status"),

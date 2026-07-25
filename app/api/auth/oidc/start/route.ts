@@ -4,7 +4,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { API_BASE } from "@/lib/base-path";
 import { isCrossSiteRequest } from "@/lib/csrf";
 import { openbao, OpenBaoRequestError } from "@/lib/openbao";
+import { FixedWindowRateLimiter } from "@/lib/rate-limit";
+import { parseJsonBody, RequestBodyError } from "@/lib/request-body";
 import { requestOrigin } from "@/lib/request-origin";
+
+const oidcStartRateLimiter = new FixedWindowRateLimiter(20, 60_000);
+const SAFE_AUTH_MOUNT = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+
+function isSafeAuthMount(value: unknown): value is string {
+  return typeof value === "string" && SAFE_AUTH_MOUNT.test(value);
+}
+
+function oidcRateLimitKey(req: Request): string {
+  return req.headers.get("x-forwarded-for")?.split(",", 1)[0]?.trim() || "unknown";
+}
 
 /**
  * POST /ui2/api/auth/oidc/start  { mount?, role? }
@@ -20,11 +33,18 @@ export async function POST(req: NextRequest) {
   }
   let body: { mount?: string; role?: string };
   try {
-    body = await req.json();
-  } catch {
-    body = {};
+    body = await parseJsonBody<typeof body>(req, 4 * 1024);
+  } catch (error) {
+    const status = error instanceof RequestBodyError ? error.status : 400;
+    return NextResponse.json({ error: "Invalid JSON body" }, { status });
   }
-  const mount = body.mount || "oidc";
+  const mount = body.mount ?? "oidc";
+  if (!isSafeAuthMount(mount) || (body.role !== undefined && !isSafeAuthMount(body.role))) {
+    return NextResponse.json({ error: "Invalid OIDC mount or role" }, { status: 400 });
+  }
+  if (!oidcStartRateLimiter.consume(oidcRateLimitKey(req))) {
+    return NextResponse.json({ error: "Too many OIDC start attempts" }, { status: 429 });
+  }
   const nonce = crypto.randomUUID();
   // Must match the role's allowed_redirect_uris, which the setup wizard registers
   // from the browser's window.location.origin — so derive the same browser-facing

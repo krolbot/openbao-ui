@@ -20,7 +20,7 @@ ARG OPENBAO_IMAGE=quay.io/openbao/openbao:${OPENBAO_VERSION}
 FROM ${OPENBAO_IMAGE} AS openbao
 
 # --- Stage 1: install dependencies ------------------------------------------
-FROM node:22-alpine AS deps
+FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS deps
 RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
@@ -30,7 +30,7 @@ COPY package.json pnpm-lock.yaml* ./
 RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
 
 # --- Stage 2: build the Next.js standalone output ---------------------------
-FROM node:22-alpine AS builder
+FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS builder
 RUN corepack enable
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -39,7 +39,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
 # --- Stage 3: runtime (Node + the OpenBao binary) ---------------------------
-FROM node:22-alpine AS runner
+FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -66,10 +66,6 @@ RUN chmod +x /usr/local/bin/entrypoint.sh \
   && mkdir -p /bao/file \
   && addgroup -S bao && adduser -S bao -G bao \
   && chown -R bao:bao /bao /app
-
-# Dev mode is the default so login works out of the box; disable for production.
-ENV BAO_DEV=1
-ENV BAO_DEV_ROOT_TOKEN_ID=root
 
 EXPOSE 3000
 USER bao

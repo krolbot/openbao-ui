@@ -1,0 +1,13 @@
+services:
+  openbao-ui:
+    build:
+      context: .
+    image: openbao-ui:dev
+    init: true
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_ENV: development
+      OPENBAO_UI_PUBLIC_URL: http://localhost:3000
+      BAO_DEV: "1"
+      BAO_DEV_ROOT_TOKEN_ID: ${BAO_DEV_ROOT_TOKEN_ID:?set a development-only token in .env}

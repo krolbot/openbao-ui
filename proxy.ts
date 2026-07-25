@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { BASE_PATH } from "@/lib/base-path";
 
-const COOKIE_NAME = process.env.BAO_COOKIE_NAME ?? "bao_token";
+const COOKIE_NAME =
+  process.env.BAO_COOKIE_NAME ??
+  (process.env.NODE_ENV === "production" ? "__Host-bao_token" : "bao_token");
 
 /**
  * Gate authenticated app pages (Next 16 "proxy" convention, formerly

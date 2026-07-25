@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { isCrossSiteRequest } from "@/lib/csrf";
 import { getConfig, setConfig } from "@/lib/db";
-import { getToken } from "@/lib/session";
+import { getValidatedMetadataSession } from "@/lib/metadata-session";
+import { parseJsonBody, RequestBodyError } from "@/lib/request-body";
 import { isOperator } from "@/lib/ui-admin";
 
 /**
@@ -18,23 +19,23 @@ export const dynamic = "force-dynamic";
 const key = (ns: string) => `app-credentials::${ns}`;
 
 export async function GET(req: NextRequest) {
-  const token = await getToken();
-  if (!token) {
+  const session = await getValidatedMetadataSession(req.headers);
+  if (!session) {
     return NextResponse.json({ errors: ["not authenticated"] }, { status: 401 });
   }
-  const ns = req.headers.get("x-vault-namespace") ?? "";
+  const { namespace: ns } = session;
   return NextResponse.json({ creds: getConfig<unknown[]>(key(ns)) ?? [] });
 }
 
 export async function PUT(req: NextRequest) {
-  const token = await getToken();
-  if (!token) {
+  const session = await getValidatedMetadataSession(req.headers);
+  if (!session) {
     return NextResponse.json({ errors: ["not authenticated"] }, { status: 401 });
   }
+  const { namespace: ns, token } = session;
   if (isCrossSiteRequest(req)) {
     return NextResponse.json({ errors: ["cross-site request blocked"] }, { status: 403 });
   }
-  const ns = req.headers.get("x-vault-namespace") ?? "";
   if (!(await isOperator(token, ns))) {
     return NextResponse.json(
       { errors: ["forbidden: requires mount-management capability"] },
@@ -43,9 +44,10 @@ export async function PUT(req: NextRequest) {
   }
   let body: { creds?: unknown[] };
   try {
-    body = (await req.json()) as typeof body;
-  } catch {
-    return NextResponse.json({ errors: ["invalid JSON"] }, { status: 400 });
+    body = await parseJsonBody<typeof body>(req, 64 * 1024);
+  } catch (error) {
+    const status = error instanceof RequestBodyError ? error.status : 400;
+    return NextResponse.json({ errors: ["invalid JSON"] }, { status });
   }
   if (!Array.isArray(body.creds)) {
     return NextResponse.json({ errors: ["creds must be an array"] }, { status: 400 });

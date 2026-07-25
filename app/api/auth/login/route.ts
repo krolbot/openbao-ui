@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { isCrossSiteRequest } from "@/lib/csrf";
 import { openbao, OpenBaoRequestError } from "@/lib/openbao";
+import { FixedWindowRateLimiter } from "@/lib/rate-limit";
+import { parseJsonBody, RequestBodyError } from "@/lib/request-body";
 import { setToken } from "@/lib/session";
 
 type LoginBody =
@@ -9,6 +11,21 @@ type LoginBody =
   | { method: "userpass"; mount?: string; username: string; password: string }
   | { method: "ldap"; mount?: string; username: string; password: string }
   | { method: "approle"; mount?: string; roleId: string; secretId: string };
+
+const loginRateLimiter = new FixedWindowRateLimiter(10, 60_000);
+
+function isLoginBody(value: unknown): value is LoginBody {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "method" in value &&
+    typeof value.method === "string"
+  );
+}
+
+function loginRateLimitKey(req: Request): string {
+  return req.headers.get("x-forwarded-for")?.split(",", 1)[0]?.trim() || "unknown";
+}
 
 /**
  * POST /ui2/api/auth/login
@@ -22,9 +39,17 @@ export async function POST(req: Request) {
   }
   let body: LoginBody;
   try {
-    body = (await req.json()) as LoginBody;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    const parsed = await parseJsonBody<unknown>(req, 16 * 1024);
+    if (!isLoginBody(parsed)) {
+      return NextResponse.json({ error: "Invalid login body" }, { status: 400 });
+    }
+    body = parsed;
+  } catch (error) {
+    const status = error instanceof RequestBodyError ? error.status : 400;
+    return NextResponse.json({ error: "Invalid JSON body" }, { status });
+  }
+  if (!loginRateLimiter.consume(loginRateLimitKey(req))) {
+    return NextResponse.json({ error: "Too many login attempts" }, { status: 429 });
   }
 
   try {

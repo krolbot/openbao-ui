@@ -6,7 +6,7 @@ OPENBAO_ADDR="${OPENBAO_ADDR:-http://127.0.0.1:8200}"
 
 start_openbao() {
   if [ "${BAO_DEV:-0}" = "1" ]; then
-    echo "[entrypoint] starting OpenBao in DEV mode (root token: ${BAO_DEV_ROOT_TOKEN_ID:-root})"
+    echo "[entrypoint] starting OpenBao in DEV mode"
     # Dev mode is unsealed and in-memory — convenient, NOT for production.
     BAO_DEV_ROOT_TOKEN_ID="${BAO_DEV_ROOT_TOKEN_ID:-root}" \
       bao server -dev -dev-listen-address=127.0.0.1:8200 &

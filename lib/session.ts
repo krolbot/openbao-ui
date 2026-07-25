@@ -1,17 +1,44 @@
 import { cookies } from "next/headers";
 
+import { openbao } from "@/lib/openbao";
+
 /**
  * The OpenBao token is stored in an httpOnly cookie so it is never exposed to
  * client-side JavaScript. All authenticated calls go through the BFF, which
  * reads the token from this cookie server-side.
  */
-export const COOKIE_NAME = process.env.BAO_COOKIE_NAME ?? "bao_token";
-
 const isProd = process.env.NODE_ENV === "production";
+
+/**
+ * __Host- cookies cannot be set by a subdomain, preventing cookie tossing for
+ * the bearer token. HTTP development keeps a separate non-production name
+ * because browsers reject Secure cookies on localhost HTTP.
+ */
+export function getCookieName(nodeEnv = process.env.NODE_ENV): string {
+  return process.env.BAO_COOKIE_NAME ?? (nodeEnv === "production" ? "__Host-bao_token" : "bao_token");
+}
+
+export const COOKIE_NAME = getCookieName();
 
 export async function getToken(): Promise<string | undefined> {
   const store = await cookies();
   return store.get(COOKIE_NAME)?.value;
+}
+
+/**
+ * Validates the bearer with OpenBao before local UI metadata relies on it.
+ * Cookie presence alone is not authentication: callers can forge Cookie headers.
+ */
+export async function getValidatedToken(namespace?: string): Promise<string | undefined> {
+  const token = await getToken();
+  if (!token) return undefined;
+  try {
+    await openbao.lookupSelf(token, namespace);
+    return token;
+  } catch {
+    await clearToken();
+    return undefined;
+  }
 }
 
 export async function setToken(token: string, maxAgeSeconds: number) {

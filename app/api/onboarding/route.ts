@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { isCrossSiteRequest } from "@/lib/csrf";
 import { getConfig, setConfig } from "@/lib/db";
-import { getToken } from "@/lib/session";
+import { getValidatedMetadataSession } from "@/lib/metadata-session";
+import { parseJsonBody, RequestBodyError } from "@/lib/request-body";
 
 /**
  * Per-namespace onboarding progress for the "Getting started" checklist.
@@ -20,17 +21,17 @@ const key = (ns: string) => `onboarding::${ns}`;
 type Onboarding = { dismissed?: boolean; steps?: Record<string, boolean> };
 
 export async function GET(req: NextRequest) {
-  const token = await getToken();
-  if (!token) {
+  const session = await getValidatedMetadataSession(req.headers);
+  if (!session) {
     return NextResponse.json({ errors: ["not authenticated"] }, { status: 401 });
   }
-  const ns = req.headers.get("x-vault-namespace") ?? "";
+  const { namespace: ns } = session;
   return NextResponse.json({ onboarding: getConfig<Onboarding>(key(ns)) ?? {} });
 }
 
 export async function PUT(req: NextRequest) {
-  const token = await getToken();
-  if (!token) {
+  const session = await getValidatedMetadataSession(req.headers);
+  if (!session) {
     return NextResponse.json({ errors: ["not authenticated"] }, { status: 401 });
   }
   if (isCrossSiteRequest(req)) {
@@ -41,12 +42,13 @@ export async function PUT(req: NextRequest) {
   }
   let body: Onboarding & { namespace?: string };
   try {
-    body = (await req.json()) as typeof body;
-  } catch {
-    return NextResponse.json({ errors: ["invalid JSON"] }, { status: 400 });
+    body = await parseJsonBody<typeof body>(req, 16 * 1024);
+  } catch (error) {
+    const status = error instanceof RequestBodyError ? error.status : 400;
+    return NextResponse.json({ errors: ["invalid JSON"] }, { status });
   }
-  // Scope onboarding state to the caller's namespace (header), not the body.
-  const ns = req.headers.get("x-vault-namespace") ?? "";
+  // Scope onboarding state to the namespace verified with the token.
+  const { namespace: ns } = session;
   const current = (getConfig<Onboarding>(key(ns)) ?? {}) as Onboarding;
   const merged: Onboarding = {
     ...current,

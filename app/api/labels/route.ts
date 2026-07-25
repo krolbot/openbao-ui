@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { isCrossSiteRequest } from "@/lib/csrf";
 import { listLabels, upsertLabel, type LabelScope } from "@/lib/db";
-import { getToken } from "@/lib/session";
+import { getValidatedMetadataSession } from "@/lib/metadata-session";
+import { parseJsonBody, RequestBodyError } from "@/lib/request-body";
 import { isOperator } from "@/lib/ui-admin";
 
 /**
@@ -20,14 +21,11 @@ const isScope = (s: unknown): s is LabelScope =>
   typeof s === "string" && SCOPES.has(s as LabelScope);
 
 export async function GET(req: NextRequest) {
-  const token = await getToken();
-  if (!token) {
+  const session = await getValidatedMetadataSession(req.headers);
+  if (!session) {
     return NextResponse.json({ errors: ["not authenticated"] }, { status: 401 });
   }
-  // Namespace is taken from the caller's X-Vault-Namespace header (the app
-  // convention), never the query/body — so it can't be used to read another
-  // namespace's metadata by spoofing a parameter.
-  const namespace = req.headers.get("x-vault-namespace") ?? "";
+  const { namespace } = session;
   const scopeParam = req.nextUrl.searchParams.get("scope");
   if (scopeParam && !isScope(scopeParam)) {
     return NextResponse.json({ errors: ["invalid scope"] }, { status: 400 });
@@ -44,19 +42,18 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const token = await getToken();
-  if (!token) {
+  const session = await getValidatedMetadataSession(req.headers);
+  if (!session) {
     return NextResponse.json({ errors: ["not authenticated"] }, { status: 401 });
   }
+  const { namespace, token } = session;
   if (isCrossSiteRequest(req)) {
     return NextResponse.json(
       { errors: ["cross-site request blocked"] },
       { status: 403 },
     );
   }
-  // Authorize against — and store under — the caller's own namespace (header),
-  // never a body-supplied namespace, so an operator in A can't write B's labels.
-  const namespace = req.headers.get("x-vault-namespace") ?? "";
+  // Namespace was validated together with the bearer and is the only storage scope.
   if (!(await isOperator(token, namespace))) {
     return NextResponse.json(
       { errors: ["forbidden: requires mount-management capability"] },
@@ -66,9 +63,10 @@ export async function PUT(req: NextRequest) {
 
   let body: Record<string, unknown>;
   try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return NextResponse.json({ errors: ["invalid JSON"] }, { status: 400 });
+    body = await parseJsonBody<Record<string, unknown>>(req, 16 * 1024);
+  } catch (error) {
+    const status = error instanceof RequestBodyError ? error.status : 400;
+    return NextResponse.json({ errors: ["invalid JSON"] }, { status });
   }
 
   const scope = body.scope;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { isCrossSiteRequest } from "@/lib/csrf";
 import { OPENBAO_ADDR } from "@/lib/openbao";
+import { readTextBody, RequestBodyError } from "@/lib/request-body";
 import { getToken } from "@/lib/session";
 
 /**
@@ -16,6 +17,9 @@ import { getToken } from "@/lib/session";
  *  - We deliberately scope to the user's own token — this is no more privileged
  *    than the user calling the OpenBao API directly.
  */
+const MAX_PROXY_BODY_BYTES = 2 * 1024 * 1024;
+const MAX_PROXY_RESPONSE_BYTES = 4 * 1024 * 1024;
+
 async function handle(
   req: NextRequest,
   ctx: { params: Promise<{ path: string[] }> },
@@ -46,7 +50,12 @@ async function handle(
   const hasBody = !["GET", "HEAD"].includes(req.method);
   let body: string | undefined;
   if (hasBody) {
-    body = await req.text();
+    try {
+      body = await readTextBody(req, MAX_PROXY_BODY_BYTES);
+    } catch (error) {
+      const status = error instanceof RequestBodyError ? error.status : 400;
+      return NextResponse.json({ errors: ["request body too large"] }, { status });
+    }
     if (body) headers["Content-Type"] = "application/json";
   }
 

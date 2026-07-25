@@ -1,0 +1,51 @@
+import { describe, expect, it } from "vitest";
+
+import { isCrossSiteRequest } from "@/lib/csrf";
+import { getCookieName } from "@/lib/session";
+import { FixedWindowRateLimiter } from "@/lib/rate-limit";
+import { parseJsonBody } from "@/lib/request-body";
+
+describe("session cookie hardening", () => {
+  it("uses a host-only cookie prefix in production", () => {
+    expect(getCookieName("production")).toBe("__Host-bao_token");
+  });
+
+  it("keeps the development cookie explicitly separate", () => {
+    expect(getCookieName("development")).toBe("bao_token");
+  });
+});
+
+describe("request-origin CSRF fallback", () => {
+  it("rejects a same-host request that changes scheme", () => {
+    const req = new Request("https://vault.example.test/ui2/api/auth/login", {
+      method: "POST",
+      headers: { origin: "http://vault.example.test" },
+    });
+    expect(isCrossSiteRequest(req)).toBe(true);
+  });
+});
+
+describe("bounded JSON parsing", () => {
+  it("rejects a body over the configured byte limit", async () => {
+    const req = new Request("http://localhost/api", {
+      method: "POST",
+      body: JSON.stringify({ value: "x".repeat(32) }),
+    });
+    await expect(parseJsonBody(req, 16)).rejects.toMatchObject({ status: 413 });
+  });
+
+  it("rejects malformed JSON with a client error", async () => {
+    const req = new Request("http://localhost/api", { method: "POST", body: "{" });
+    await expect(parseJsonBody(req, 1024)).rejects.toMatchObject({ status: 400 });
+  });
+});
+
+describe("login rate limiting", () => {
+  it("blocks attempts after the configured threshold and resets after the window", () => {
+    const limiter = new FixedWindowRateLimiter(2, 1_000);
+    expect(limiter.consume("127.0.0.1", 100)).toBe(true);
+    expect(limiter.consume("127.0.0.1", 101)).toBe(true);
+    expect(limiter.consume("127.0.0.1", 102)).toBe(false);
+    expect(limiter.consume("127.0.0.1", 1_101)).toBe(true);
+  });
+});

@@ -66,14 +66,16 @@ pnpm install
 pnpm dev                                        # http://localhost:3000
 ```
 
-Open <http://localhost:3000> → you'll be redirected to `/ui2/login`. Sign in with
-the **Token** method using `root`. The Overview page shows live seal status, your
-token's policies, and the enabled secret engines; **Secrets** lets you browse KV
-engines, create/edit secrets, view version history, and roll back — all fetched
-through the proxy, proving the frontend ↔ backend wiring end to end.
+For local development, open <http://localhost:3000> and sign in with the
+**Token** method using the development-only token you supplied. The Overview
+page shows live seal status, token policies, and enabled secret engines;
+**Secrets** lets you browse KV engines, create/edit secrets, view version
+history, and roll back — all fetched through the proxy, proving the frontend ↔
+backend wiring end to end.
 
-Config via env (see `.env.example`): `OPENBAO_ADDR`, `BAO_COOKIE_NAME`, and the
-optional `OPENBAO_UI_PUBLIC_URL` ([behind a reverse proxy](#behind-a-reverse-proxy)).
+Config via env (see `.env.example`): `OPENBAO_ADDR`, `BAO_COOKIE_NAME`, and
+**required in production** `OPENBAO_UI_PUBLIC_URL` (the canonical public HTTPS
+origin used for OIDC redirects and CSRF validation).
 
 ### Architecture detail: client data flow
 
@@ -85,20 +87,24 @@ JS while the UI still gets live, cacheable reads/writes.
 ## Single image (UI + OpenBao)
 
 ```bash
-docker build -t openbao-ui .
-docker run --rm -p 3000:3000 -e BAO_DEV=1 -e BAO_DEV_ROOT_TOKEN_ID=root openbao-ui
-# or:
+# Development only: explicit opt-in, loopback-bound, unsealed in-memory OpenBao.
+BAO_DEV_ROOT_TOKEN_ID=choose-a-local-dev-token \
+  docker compose -f docker-compose.dev.yml up --build
+
+# Production-safe default: set OPENBAO_UI_PUBLIC_URL in .env, then initialize
+# and unseal the persistent instance before exposing it through TLS ingress.
 docker compose up --build
 ```
 
 Then visit <http://localhost:3000> and log in with token `root`.
 
-- **Dev mode** (`BAO_DEV=1`, default): in-memory, auto-unsealed, fixed root
-  token — great for trying it out, **not** for production.
-- **Non-dev** (`BAO_DEV=0`): boots from `docker/openbao.hcl` (file storage). The
-  instance starts **sealed/uninitialized** — the UI detects this at `/ui2/login`
-  and walks you through the built-in **initialize → save keys → unseal** flow.
-  Mount a volume at `/bao/file` to persist storage.
+- **Dev mode** (`BAO_DEV=1`): explicit opt-in through `docker-compose.dev.yml`,
+  loopback-bound, in-memory and auto-unsealed. Set a development-only root token
+  through the environment; never expose this mode publicly.
+- **Production mode** (`BAO_DEV=0`, the image and `docker-compose.yml` default):
+  boots from `docker/openbao.hcl` with persistent file storage. The instance starts
+  **sealed/uninitialized** — the UI detects this at `/ui2/login` and walks you
+  through the built-in **initialize → save keys → unseal** flow.
 
 ### Behind a reverse proxy
 
