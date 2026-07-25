@@ -37,11 +37,8 @@ const nextConfig: NextConfig = {
         basePath: false,
         headers: [
           { key: "X-Frame-Options", value: "DENY" },
-          {
-            key: "Content-Security-Policy",
-            value:
-              "default-src 'self'; script-src 'self' 'sha256-GsHNcCTMw/cAiGHeOrUisRG5jLKewA09uoLlTwzqkxI='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
-          },
+          // CSP is request-bound and emitted by proxy.ts with a cryptographic
+          // nonce that Next attaches to its inline bootstrapping scripts.
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "no-referrer" },
         ],

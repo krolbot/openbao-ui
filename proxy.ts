@@ -6,6 +6,25 @@ const COOKIE_NAME =
   process.env.BAO_COOKIE_NAME ??
   (process.env.NODE_ENV === "production" ? "__Host-bao_token" : "bao_token");
 
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
+function createNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes));
+}
+
 /**
  * Gate authenticated app pages (Next 16 "proxy" convention, formerly
  * middleware). Unauthenticated requests to our app (/ui2/*) are redirected to
@@ -17,6 +36,24 @@ const COOKIE_NAME =
  */
 export function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+  const requestHeaders = new Headers(req.headers);
+  const nonce = createNonce();
+  const csp = CSP.replace("{nonce}", nonce);
+
+  // Next reads x-nonce from its request headers and renders matching nonce
+  // attributes on its dynamic inline bootstrapping scripts.
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("content-security-policy", csp);
+  const next = () => {
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
+    response.headers.set("Content-Security-Policy", csp);
+    return response;
+  };
+  const redirectToLogin = () => {
+    const response = NextResponse.redirect(new URL(`${BASE_PATH}/login`, req.url));
+    response.headers.set("Content-Security-Policy", csp);
+    return response;
+  };
 
   // Normalize away our basePath so the allow-list works regardless of whether
   // Next includes it in the pathname for this runtime version.
@@ -34,14 +71,12 @@ export function proxy(req: NextRequest) {
     rel.startsWith("/api/") ||
     isAsset;
 
-  if (isPublic) return NextResponse.next();
+  if (isPublic) return next();
 
   const token = req.cookies.get(COOKIE_NAME)?.value;
-  if (!token) {
-    return NextResponse.redirect(new URL(`${BASE_PATH}/login`, req.url));
-  }
+  if (!token) return redirectToLogin();
 
-  return NextResponse.next();
+  return next();
 }
 
 export const config = {
