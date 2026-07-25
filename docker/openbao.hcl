@@ -29,7 +29,7 @@ cluster_addr = "http://127.0.0.1:8201"
 # file. The device attaches once the instance is unsealed.
 audit "file" "file" {
   options {
-    file_path = "/bao/raft/audit.log"
+    file_path = "/bao/file/audit.log"
   }
 }
 
