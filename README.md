@@ -126,9 +126,9 @@ with the redirect URI registered in your Google/OIDC provider. Only the origin
 The published image embeds a specific OpenBao version and is **tagged to match
 it**, so picking a tag picks the OpenBao inside:
 
-| Our image (`ghcr.io/hasdfa/openbao-ui`) | Embedded OpenBao |
+| Our image (`ghcr.io/krolbot/openbao-ui`) | Embedded OpenBao |
 | --- | --- |
-| `:2.5.5`, `:2.5`, `:2` | `quay.io/openbao/openbao:2.5.5` |
+| `:2.6.1`, `:2.6`, `:2` | `quay.io/openbao/openbao:2.6.1` |
 | `:latest` | newest released OpenBao |
 | `:sha-<commit>` | immutable, per-commit |
 

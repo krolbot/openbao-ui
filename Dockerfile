@@ -10,7 +10,7 @@
 # The image is pinned by immutable digest. Keep this fallback in sync with
 # `.openbao-image`; CI passes that committed ref explicitly.
 #   docker build --build-arg OPENBAO_IMAGE="$(cat .openbao-image)" .
-ARG OPENBAO_IMAGE=quay.io/openbao/openbao@sha256:6150c4a6b62067db6141c8da7a6a6b5763f4f47c315343d0c848b40fecdfd452
+ARG OPENBAO_IMAGE=quay.io/openbao/openbao@sha256:5b2486ab0fb90bbc788cc345b0a08616dfb375873ee8be5df3a2fd4d378a67e0
 FROM ${OPENBAO_IMAGE} AS openbao
 
 # --- Stage 1: install dependencies ------------------------------------------
@@ -45,8 +45,8 @@ ENV HOSTNAME=0.0.0.0
 # signal handling is delegated to Docker's init (run with `--init` / compose
 # `init: true`). Keeps the image lean and free of build-time network deps.
 
-# Pull the `bao` binary from the OpenBao image stage (see OPENBAO_IMAGE above).
-COPY --from=openbao /bin/bao /usr/local/bin/bao
+# OpenBao 2.6+ installs `bao` at /usr/bin/bao.
+COPY --from=openbao /usr/bin/bao /usr/local/bin/bao
 
 # Next.js standalone server + static assets.
 COPY --from=builder /app/.next/standalone ./
