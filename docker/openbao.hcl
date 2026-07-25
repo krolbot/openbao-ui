@@ -2,17 +2,18 @@
 # OpenBao only listens on loopback; the Next.js BFF is the public entry point
 # and proxies /v1/* to this listener inside the container.
 #
-# NOTE: with file storage the instance starts SEALED and UNINITIALIZED. You must
-# initialize + unseal it (via the API/CLI) before the UI can be used. For a
-# quick start prefer dev mode (BAO_DEV=1). Production deployments should mount a
-# real config/storage and TLS termination.
+# NOTE: with integrated Raft storage the instance starts SEALED and UNINITIALIZED.
+# You must initialize + unseal it (via the API/CLI) before the UI can be used. For
+# a quick start prefer dev mode (BAO_DEV=1). Production deployments should mount
+# the Raft data path and terminate TLS at the edge.
 
 # Serve OpenBao's stock UI at :8200/ui/. The Next.js BFF proxies /ui/* through
 # to it (our own app lives at /ui2/*), so both UIs are reachable side by side.
 ui = true
 
-storage "file" {
-  path = "/bao/file"
+storage "raft" {
+  path    = "/bao/raft"
+  node_id = "openbao-ui-1"
 }
 
 listener "tcp" {
@@ -20,15 +21,15 @@ listener "tcp" {
   tls_disable = true
 }
 
-# Disable mlock for container portability; review for hardened deployments.
-disable_mlock = true
+api_addr     = "http://127.0.0.1:8200"
+cluster_addr = "http://127.0.0.1:8201"
 
 # Declarative file audit device. OpenBao disables enabling audit devices over
 # the API, so they are configured here; the UI's audit-log viewer reads this
 # file. The device attaches once the instance is unsealed.
 audit "file" "file" {
   options {
-    file_path = "/bao/file/audit.log"
+    file_path = "/bao/raft/audit.log"
   }
 }
 
