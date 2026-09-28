@@ -8,7 +8,7 @@
 # exact OpenBao version (tag parity). CI/publish pass OPENBAO_VERSION explicitly
 # (from the repo's `.openbao-version` pin); the immutable image reference lives
 # in `.openbao-image` and CI passes it explicitly.
-ARG OPENBAO_IMAGE=quay.io/openbao/openbao@sha256:5b2486ab0fb90bbc788cc345b0a08616dfb375873ee8be5df3a2fd4d378a67e0
+ARG OPENBAO_IMAGE=quay.io/openbao/openbao@sha256:71156a1c6623a5fa3f5e61b0c6a8ead0faf0df29a778339188443551995d1315
 FROM ${OPENBAO_IMAGE} AS openbao
 
 FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS runner

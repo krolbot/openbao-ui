@@ -10,7 +10,7 @@
 # The image is pinned by immutable digest. Keep this fallback in sync with
 # `.openbao-image`; CI passes that committed ref explicitly.
 #   docker build --build-arg OPENBAO_IMAGE="$(cat .openbao-image)" .
-ARG OPENBAO_IMAGE=quay.io/openbao/openbao@sha256:5b2486ab0fb90bbc788cc345b0a08616dfb375873ee8be5df3a2fd4d378a67e0
+ARG OPENBAO_IMAGE=quay.io/openbao/openbao@sha256:71156a1c6623a5fa3f5e61b0c6a8ead0faf0df29a778339188443551995d1315
 FROM ${OPENBAO_IMAGE} AS openbao
 
 # --- Stage 1: install dependencies ------------------------------------------
